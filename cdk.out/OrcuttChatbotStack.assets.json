@@ -1,0 +1,66 @@
+{
+  "version": "48.0.0",
+  "files": {
+    "faa95a81ae7d7373f3e1f242268f904eb748d8d0fdd306e8a6fe515a1905a7d6": {
+      "displayName": "OrcuttChatbotStack/Custom::S3AutoDeleteObjectsCustomResourceProvider Code",
+      "source": {
+        "path": "asset.faa95a81ae7d7373f3e1f242268f904eb748d8d0fdd306e8a6fe515a1905a7d6",
+        "packaging": "zip"
+      },
+      "destinations": {
+        "412072465402-us-west-2-50df79a0": {
+          "bucketName": "cdk-hnb659fds-assets-412072465402-us-west-2",
+          "objectKey": "faa95a81ae7d7373f3e1f242268f904eb748d8d0fdd306e8a6fe515a1905a7d6.zip",
+          "region": "us-west-2",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::412072465402:role/cdk-hnb659fds-file-publishing-role-412072465402-us-west-2"
+        }
+      }
+    },
+    "c099eb4e32cbf1c3da9c45a3b280efe2bed38d27d74aa72702b67d86d1b52354": {
+      "displayName": "AWS679f53fac002430cb0da5b7982bd2287/Code",
+      "source": {
+        "path": "asset.c099eb4e32cbf1c3da9c45a3b280efe2bed38d27d74aa72702b67d86d1b52354",
+        "packaging": "zip"
+      },
+      "destinations": {
+        "412072465402-us-west-2-59dde3ca": {
+          "bucketName": "cdk-hnb659fds-assets-412072465402-us-west-2",
+          "objectKey": "c099eb4e32cbf1c3da9c45a3b280efe2bed38d27d74aa72702b67d86d1b52354.zip",
+          "region": "us-west-2",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::412072465402:role/cdk-hnb659fds-file-publishing-role-412072465402-us-west-2"
+        }
+      }
+    },
+    "647cbc7193ba4cd7c3f6600ba778187744fd63b53bafdef0bb38d78d1b2c6cf3": {
+      "displayName": "OrcuttChatbotFunction/Code",
+      "source": {
+        "path": "asset.647cbc7193ba4cd7c3f6600ba778187744fd63b53bafdef0bb38d78d1b2c6cf3",
+        "packaging": "zip"
+      },
+      "destinations": {
+        "412072465402-us-west-2-f71c3c5a": {
+          "bucketName": "cdk-hnb659fds-assets-412072465402-us-west-2",
+          "objectKey": "647cbc7193ba4cd7c3f6600ba778187744fd63b53bafdef0bb38d78d1b2c6cf3.zip",
+          "region": "us-west-2",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::412072465402:role/cdk-hnb659fds-file-publishing-role-412072465402-us-west-2"
+        }
+      }
+    },
+    "6e7997a17dc1276e7204ac345d39b6c0dc48aa01c99117ba2db5925f6b31976b": {
+      "displayName": "OrcuttChatbotStack Template",
+      "source": {
+        "path": "OrcuttChatbotStack.template.json",
+        "packaging": "file"
+      },
+      "destinations": {
+        "412072465402-us-west-2-0774c21c": {
+          "bucketName": "cdk-hnb659fds-assets-412072465402-us-west-2",
+          "objectKey": "6e7997a17dc1276e7204ac345d39b6c0dc48aa01c99117ba2db5925f6b31976b.json",
+          "region": "us-west-2",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::412072465402:role/cdk-hnb659fds-file-publishing-role-412072465402-us-west-2"
+        }
+      }
+    }
+  },
+  "dockerImages": {}
+}

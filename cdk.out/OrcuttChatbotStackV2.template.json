@@ -1,0 +1,751 @@
+{
+ "Resources": {
+  "KnowledgeBaseBucketC011DD60": {
+   "Type": "AWS::S3::Bucket",
+   "Properties": {
+    "BucketName": "orcutt-chatbot-kb-v4-412072465402-us-west-2",
+    "Tags": [
+     {
+      "Key": "aws-cdk:auto-delete-objects",
+      "Value": "true"
+     }
+    ],
+    "VersioningConfiguration": {
+     "Status": "Enabled"
+    }
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "OrcuttChatbotStackV2/KnowledgeBaseBucket/Resource"
+   }
+  },
+  "KnowledgeBaseBucketPolicyB9428EE4": {
+   "Type": "AWS::S3::BucketPolicy",
+   "Properties": {
+    "Bucket": {
+     "Ref": "KnowledgeBaseBucketC011DD60"
+    },
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "s3:DeleteObject*",
+        "s3:GetBucket*",
+        "s3:List*",
+        "s3:PutBucketPolicy"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "AWS": {
+         "Fn::GetAtt": [
+          "CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092",
+          "Arn"
+         ]
+        }
+       },
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "KnowledgeBaseBucketC011DD60",
+          "Arn"
+         ]
+        },
+        {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::GetAtt": [
+             "KnowledgeBaseBucketC011DD60",
+             "Arn"
+            ]
+           },
+           "/*"
+          ]
+         ]
+        }
+       ]
+      }
+     ],
+     "Version": "2012-10-17"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "OrcuttChatbotStackV2/KnowledgeBaseBucket/Policy/Resource"
+   }
+  },
+  "KnowledgeBaseBucketAutoDeleteObjectsCustomResource69389698": {
+   "Type": "Custom::S3AutoDeleteObjects",
+   "Properties": {
+    "ServiceToken": {
+     "Fn::GetAtt": [
+      "CustomS3AutoDeleteObjectsCustomResourceProviderHandler9D90184F",
+      "Arn"
+     ]
+    },
+    "BucketName": {
+     "Ref": "KnowledgeBaseBucketC011DD60"
+    }
+   },
+   "DependsOn": [
+    "KnowledgeBaseBucketPolicyB9428EE4"
+   ],
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "OrcuttChatbotStackV2/KnowledgeBaseBucket/AutoDeleteObjectsCustomResource/Default"
+   }
+  },
+  "CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "lambda.amazonaws.com"
+       }
+      }
+     ]
+    },
+    "ManagedPolicyArns": [
+     {
+      "Fn::Sub": "arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "OrcuttChatbotStackV2/Custom::S3AutoDeleteObjectsCustomResourceProvider/Role"
+   }
+  },
+  "CustomS3AutoDeleteObjectsCustomResourceProviderHandler9D90184F": {
+   "Type": "AWS::Lambda::Function",
+   "Properties": {
+    "Code": {
+     "S3Bucket": "cdk-hnb659fds-assets-412072465402-us-west-2",
+     "S3Key": "faa95a81ae7d7373f3e1f242268f904eb748d8d0fdd306e8a6fe515a1905a7d6.zip"
+    },
+    "Timeout": 900,
+    "MemorySize": 128,
+    "Handler": "index.handler",
+    "Role": {
+     "Fn::GetAtt": [
+      "CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092",
+      "Arn"
+     ]
+    },
+    "Runtime": "nodejs22.x",
+    "Description": {
+     "Fn::Join": [
+      "",
+      [
+       "Lambda function for auto-deleting objects in ",
+       {
+        "Ref": "KnowledgeBaseBucketC011DD60"
+       },
+       " S3 bucket."
+      ]
+     ]
+    }
+   },
+   "DependsOn": [
+    "CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "OrcuttChatbotStackV2/Custom::S3AutoDeleteObjectsCustomResourceProvider/Handler",
+    "aws:asset:path": "asset.faa95a81ae7d7373f3e1f242268f904eb748d8d0fdd306e8a6fe515a1905a7d6",
+    "aws:asset:property": "Code"
+   }
+  },
+  "KnowledgeBaseOpenSearchMasterUserDC0F9903": {
+   "Type": "AWS::SecretsManager::Secret",
+   "Properties": {
+    "GenerateSecretString": {
+     "ExcludeCharacters": "{}'\\*[]()`",
+     "GenerateStringKey": "password",
+     "SecretStringTemplate": "{\"username\":\"admin\"}"
+    }
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "OrcuttChatbotStackV2/KnowledgeBaseOpenSearch/MasterUser/Resource"
+   }
+  },
+  "KnowledgeBaseOpenSearchD4869173": {
+   "Type": "AWS::OpenSearchService::Domain",
+   "Properties": {
+    "AdvancedSecurityOptions": {
+     "Enabled": true,
+     "InternalUserDatabaseEnabled": true,
+     "MasterUserOptions": {
+      "MasterUserName": "admin",
+      "MasterUserPassword": {
+       "Fn::Join": [
+        "",
+        [
+         "{{resolve:secretsmanager:",
+         {
+          "Ref": "KnowledgeBaseOpenSearchMasterUserDC0F9903"
+         },
+         ":SecretString:password::}}"
+        ]
+       ]
+      }
+     }
+    },
+    "ClusterConfig": {
+     "DedicatedMasterEnabled": false,
+     "InstanceCount": 1,
+     "InstanceType": "t3.small.search",
+     "ZoneAwarenessEnabled": false
+    },
+    "DomainEndpointOptions": {
+     "EnforceHTTPS": true,
+     "TLSSecurityPolicy": "Policy-Min-TLS-1-2-2019-07"
+    },
+    "DomainName": "orcutt-kb-v4-412072465402",
+    "EBSOptions": {
+     "EBSEnabled": true,
+     "VolumeSize": 10,
+     "VolumeType": "gp3"
+    },
+    "EncryptionAtRestOptions": {
+     "Enabled": true
+    },
+    "EngineVersion": "OpenSearch_2.3",
+    "LogPublishingOptions": {},
+    "NodeToNodeEncryptionOptions": {
+     "Enabled": true
+    }
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "OrcuttChatbotStackV2/KnowledgeBaseOpenSearch/Resource"
+   }
+  },
+  "KnowledgeBaseOpenSearchAccessPolicyA902DF61": {
+   "Type": "Custom::OpenSearchAccessPolicy",
+   "Properties": {
+    "ServiceToken": {
+     "Fn::GetAtt": [
+      "AWS679f53fac002430cb0da5b7982bd22872D164C4C",
+      "Arn"
+     ]
+    },
+    "Create": {
+     "Fn::Join": [
+      "",
+      [
+       "{\"action\":\"updateDomainConfig\",\"service\":\"OpenSearch\",\"parameters\":{\"DomainName\":\"",
+       {
+        "Ref": "KnowledgeBaseOpenSearchD4869173"
+       },
+       "\",\"AccessPolicies\":\"{\\\"Statement\\\":[{\\\"Action\\\":\\\"es:*\\\",\\\"Effect\\\":\\\"Allow\\\",\\\"Principal\\\":{\\\"Service\\\":\\\"bedrock.amazonaws.com\\\"},\\\"Resource\\\":\\\"*\\\"},{\\\"Action\\\":\\\"es:ESHttp*\\\",\\\"Effect\\\":\\\"Allow\\\",\\\"Principal\\\":{\\\"AWS\\\":\\\"*\\\"},\\\"Resource\\\":\\\"",
+       {
+        "Fn::GetAtt": [
+         "KnowledgeBaseOpenSearchD4869173",
+         "Arn"
+        ]
+       },
+       "/*\\\"}],\\\"Version\\\":\\\"2012-10-17\\\"}\"},\"outputPaths\":[\"DomainConfig.AccessPolicies\"],\"physicalResourceId\":{\"id\":\"",
+       {
+        "Ref": "KnowledgeBaseOpenSearchD4869173"
+       },
+       "AccessPolicy\"}}"
+      ]
+     ]
+    },
+    "Update": {
+     "Fn::Join": [
+      "",
+      [
+       "{\"action\":\"updateDomainConfig\",\"service\":\"OpenSearch\",\"parameters\":{\"DomainName\":\"",
+       {
+        "Ref": "KnowledgeBaseOpenSearchD4869173"
+       },
+       "\",\"AccessPolicies\":\"{\\\"Statement\\\":[{\\\"Action\\\":\\\"es:*\\\",\\\"Effect\\\":\\\"Allow\\\",\\\"Principal\\\":{\\\"Service\\\":\\\"bedrock.amazonaws.com\\\"},\\\"Resource\\\":\\\"*\\\"},{\\\"Action\\\":\\\"es:ESHttp*\\\",\\\"Effect\\\":\\\"Allow\\\",\\\"Principal\\\":{\\\"AWS\\\":\\\"*\\\"},\\\"Resource\\\":\\\"",
+       {
+        "Fn::GetAtt": [
+         "KnowledgeBaseOpenSearchD4869173",
+         "Arn"
+        ]
+       },
+       "/*\\\"}],\\\"Version\\\":\\\"2012-10-17\\\"}\"},\"outputPaths\":[\"DomainConfig.AccessPolicies\"],\"physicalResourceId\":{\"id\":\"",
+       {
+        "Ref": "KnowledgeBaseOpenSearchD4869173"
+       },
+       "AccessPolicy\"}}"
+      ]
+     ]
+    },
+    "InstallLatestAwsSdk": false
+   },
+   "DependsOn": [
+    "KnowledgeBaseOpenSearchAccessPolicyCustomResourcePolicy551ABABA"
+   ],
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "OrcuttChatbotStackV2/KnowledgeBaseOpenSearch/AccessPolicy/Resource/Default"
+   }
+  },
+  "KnowledgeBaseOpenSearchAccessPolicyCustomResourcePolicy551ABABA": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": "es:UpdateDomainConfig",
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::GetAtt": [
+         "KnowledgeBaseOpenSearchD4869173",
+         "Arn"
+        ]
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "KnowledgeBaseOpenSearchAccessPolicyCustomResourcePolicy551ABABA",
+    "Roles": [
+     {
+      "Ref": "AWS679f53fac002430cb0da5b7982bd2287ServiceRoleC1EA0FF2"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "OrcuttChatbotStackV2/KnowledgeBaseOpenSearch/AccessPolicy/CustomResourcePolicy/Resource"
+   }
+  },
+  "AWS679f53fac002430cb0da5b7982bd2287ServiceRoleC1EA0FF2": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "lambda.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "ManagedPolicyArns": [
+     {
+      "Fn::Join": [
+       "",
+       [
+        "arn:",
+        {
+         "Ref": "AWS::Partition"
+        },
+        ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+       ]
+      ]
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "OrcuttChatbotStackV2/AWS679f53fac002430cb0da5b7982bd2287/ServiceRole/Resource"
+   }
+  },
+  "AWS679f53fac002430cb0da5b7982bd22872D164C4C": {
+   "Type": "AWS::Lambda::Function",
+   "Properties": {
+    "Code": {
+     "S3Bucket": "cdk-hnb659fds-assets-412072465402-us-west-2",
+     "S3Key": "c099eb4e32cbf1c3da9c45a3b280efe2bed38d27d74aa72702b67d86d1b52354.zip"
+    },
+    "Handler": "index.handler",
+    "Role": {
+     "Fn::GetAtt": [
+      "AWS679f53fac002430cb0da5b7982bd2287ServiceRoleC1EA0FF2",
+      "Arn"
+     ]
+    },
+    "Runtime": "nodejs22.x",
+    "Timeout": 120
+   },
+   "DependsOn": [
+    "AWS679f53fac002430cb0da5b7982bd2287ServiceRoleC1EA0FF2"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "OrcuttChatbotStackV2/AWS679f53fac002430cb0da5b7982bd2287/Resource",
+    "aws:asset:path": "asset.c099eb4e32cbf1c3da9c45a3b280efe2bed38d27d74aa72702b67d86d1b52354",
+    "aws:asset:is-bundled": false,
+    "aws:asset:property": "Code"
+   }
+  },
+  "OrcuttKnowledgeBaseRoleF97586B3": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Condition": {
+        "StringEquals": {
+         "aws:SourceAccount": "412072465402"
+        },
+        "ArnLike": {
+         "aws:SourceArn": "arn:aws:bedrock:us-west-2:412072465402:knowledge-base/*"
+        }
+       },
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "bedrock.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "RoleName": "AmazonBedrockExecutionRoleForKnowledgeBaseOrcuttCdgeBaseCB017BDC"
+   },
+   "Metadata": {
+    "aws:cdk:path": "OrcuttChatbotStackV2/OrcuttKnowledgeBase/Role/Resource",
+    "cdk_nag": {
+     "rules_to_suppress": [
+      {
+       "reason": "Bedrock Knowledge Base requires wildcard permissions to invoke embedding models",
+       "id": "AwsSolutions-IAM5"
+      },
+      {
+       "reason": "The KB role needs read only access to all objects in the data source bucket.",
+       "id": "AwsSolutions-IAM5"
+      }
+     ]
+    }
+   }
+  },
+  "OrcuttKnowledgeBaseRoleDefaultPolicy339C7819": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "bedrock:GetFoundationModel",
+        "bedrock:InvokeModel*"
+       ],
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::Join": [
+         "",
+         [
+          "arn:",
+          {
+           "Ref": "AWS::Partition"
+          },
+          ":bedrock:",
+          {
+           "Ref": "AWS::Region"
+          },
+          "::foundation-model/amazon.titan-embed-text-v2:0"
+         ]
+        ]
+       }
+      },
+      {
+       "Action": [
+        "s3:GetBucket*",
+        "s3:GetObject*",
+        "s3:List*"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "KnowledgeBaseBucketC011DD60",
+          "Arn"
+         ]
+        },
+        {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::GetAtt": [
+             "KnowledgeBaseBucketC011DD60",
+             "Arn"
+            ]
+           },
+           "/*"
+          ]
+         ]
+        }
+       ]
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "OrcuttKnowledgeBaseRoleDefaultPolicy339C7819",
+    "Roles": [
+     {
+      "Ref": "OrcuttKnowledgeBaseRoleF97586B3"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "OrcuttChatbotStackV2/OrcuttKnowledgeBase/Role/DefaultPolicy/Resource",
+    "cdk_nag": {
+     "rules_to_suppress": [
+      {
+       "reason": "Bedrock Knowledge Base requires wildcard permissions to invoke embedding models",
+       "id": "AwsSolutions-IAM5"
+      },
+      {
+       "reason": "The KB role needs read only access to all objects in the data source bucket.",
+       "id": "AwsSolutions-IAM5"
+      }
+     ]
+    }
+   }
+  },
+  "OrcuttKnowledgeBaseMyCfnKnowledgeBase2E0E9562": {
+   "Type": "AWS::Bedrock::KnowledgeBase",
+   "Properties": {
+    "KnowledgeBaseConfiguration": {
+     "Type": "VECTOR",
+     "VectorKnowledgeBaseConfiguration": {
+      "EmbeddingModelArn": {
+       "Fn::Join": [
+        "",
+        [
+         "arn:",
+         {
+          "Ref": "AWS::Partition"
+         },
+         ":bedrock:",
+         {
+          "Ref": "AWS::Region"
+         },
+         "::foundation-model/amazon.titan-embed-text-v2:0"
+        ]
+       ]
+      },
+      "EmbeddingModelConfiguration": {
+       "BedrockEmbeddingModelConfiguration": {
+        "Dimensions": 512,
+        "EmbeddingDataType": "FLOAT32"
+       }
+      }
+     }
+    },
+    "Name": "KBOrcuttChatbowledgeBaseCB017BDC",
+    "RoleArn": {
+     "Fn::GetAtt": [
+      "OrcuttKnowledgeBaseRoleF97586B3",
+      "Arn"
+     ]
+    },
+    "StorageConfiguration": {
+     "OpensearchManagedClusterConfiguration": {
+      "DomainArn": {
+       "Fn::GetAtt": [
+        "KnowledgeBaseOpenSearchD4869173",
+        "Arn"
+       ]
+      },
+      "DomainEndpoint": {
+       "Fn::Join": [
+        "",
+        [
+         "https://",
+         {
+          "Fn::GetAtt": [
+           "KnowledgeBaseOpenSearchD4869173",
+           "DomainEndpoint"
+          ]
+         }
+        ]
+       ]
+      },
+      "FieldMapping": {
+       "MetadataField": "AMAZON_BEDROCK_METADATA",
+       "TextField": "AMAZON_BEDROCK_TEXT_CHUNK",
+       "VectorField": "bedrock-knowledge-base-default-vector"
+      },
+      "VectorIndexName": "bedrock-knowledge-base-default-index"
+     },
+     "Type": "OPENSEARCH_MANAGED_CLUSTER"
+    }
+   },
+   "DependsOn": [
+    "OrcuttKnowledgeBaseKBCRPolicy09191E28",
+    "OrcuttKnowledgeBaseRoleDefaultPolicy339C7819",
+    "OrcuttKnowledgeBaseRoleF97586B3"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "OrcuttChatbotStackV2/OrcuttKnowledgeBase/MyCfnKnowledgeBase"
+   }
+  },
+  "OrcuttKnowledgeBaseKBCRPolicy09191E28": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": "bedrock:CreateKnowledgeBase",
+       "Effect": "Allow",
+       "Resource": "*"
+      },
+      {
+       "Action": [
+        "bedrock:DeleteKnowledgeBase",
+        "bedrock:TagResource",
+        "bedrock:UpdateKnowledgeBase"
+       ],
+       "Effect": "Allow",
+       "Resource": "arn:aws:bedrock:us-west-2:412072465402:knowledge-base/*"
+      },
+      {
+       "Action": "iam:PassRole",
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::GetAtt": [
+         "OrcuttKnowledgeBaseRoleF97586B3",
+         "Arn"
+        ]
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "OrcuttKnowledgeBaseKBCRPolicy09191E28",
+    "Roles": [
+     {
+      "Ref": "OrcuttKnowledgeBaseRoleF97586B3"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "OrcuttChatbotStackV2/OrcuttKnowledgeBase/KBCRPolicy/Resource",
+    "cdk_nag": {
+     "rules_to_suppress": [
+      {
+       "reason": "Bedrock CreateKnowledgeBase can't be restricted by resource.",
+       "id": "AwsSolutions-IAM5"
+      }
+     ]
+    }
+   }
+  },
+  "OrcuttDataSource5EE7D058": {
+   "Type": "AWS::Bedrock::DataSource",
+   "Properties": {
+    "DataSourceConfiguration": {
+     "S3Configuration": {
+      "BucketArn": {
+       "Fn::GetAtt": [
+        "KnowledgeBaseBucketC011DD60",
+        "Arn"
+       ]
+      },
+      "InclusionPrefixes": [
+       "documents/"
+      ]
+     },
+     "Type": "S3"
+    },
+    "KnowledgeBaseId": {
+     "Fn::GetAtt": [
+      "OrcuttKnowledgeBaseMyCfnKnowledgeBase2E0E9562",
+      "KnowledgeBaseId"
+     ]
+    },
+    "Name": "orcutt-school-docs",
+    "VectorIngestionConfiguration": {
+     "ChunkingConfiguration": {
+      "ChunkingStrategy": "SEMANTIC",
+      "SemanticChunkingConfiguration": {
+       "BreakpointPercentileThreshold": 95,
+       "BufferSize": 0,
+       "MaxTokens": 300
+      }
+     }
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "OrcuttChatbotStackV2/OrcuttDataSource/DataSource"
+   }
+  },
+  "CDKMetadata": {
+   "Type": "AWS::CDK::Metadata",
+   "Properties": {
+    "Analytics": "v2:deflate64:H4sIAAAAAAAA/11RTW/CMAz9LdzTUKh22G2DaZcdhkDaFbmuV7KmCYoTEKr635emHR87+dl+efZzlnK5yGU+gzNnWDWZVqXsdh6wEbG077iQ3SpgQ16sv82ExrCxWuHlVp7yMVkBUy/skQwTODwwuZNCkt2bbUGZ4dWIesGEjjy3YKAmF6enfGCMqBca2rKC2FGm1uSteQ8GvbJGXEFk/+FeKGhld1tvQluraUiHGKcWe2COc+XrEERJlbPYyC4yPow9a6pqGlykVcHDzgaH1PdiHdjbdkucCknxih9aG2dPqiKXVNKUeNg6ehCYeHs3EeMOZ/4ne6//GfwxxDvkciGL/Hn2En9KQ8nzmgw58OpEGaj0f2gNexcw+ro6+iL01j2a2hV3nsTm4g/WzAu5KOTT7IeVylwwXrUkt2P8BRLNmsUoAgAA"
+   },
+   "Metadata": {
+    "aws:cdk:path": "OrcuttChatbotStackV2/CDKMetadata/Default"
+   }
+  }
+ },
+ "Outputs": {
+  "S3BucketName": {
+   "Description": "S3 bucket for knowledge base",
+   "Value": {
+    "Ref": "KnowledgeBaseBucketC011DD60"
+   }
+  },
+  "OpenSearchDomainEndpoint": {
+   "Description": "OpenSearch domain endpoint",
+   "Value": {
+    "Fn::GetAtt": [
+     "KnowledgeBaseOpenSearchD4869173",
+     "DomainEndpoint"
+    ]
+   }
+  },
+  "KnowledgeBaseId": {
+   "Description": "Bedrock Knowledge Base ID",
+   "Value": {
+    "Fn::GetAtt": [
+     "OrcuttKnowledgeBaseMyCfnKnowledgeBase2E0E9562",
+     "KnowledgeBaseId"
+    ]
+   }
+  }
+ },
+ "Parameters": {
+  "BootstrapVersion": {
+   "Type": "AWS::SSM::Parameter::Value<String>",
+   "Default": "/cdk-bootstrap/hnb659fds/version",
+   "Description": "Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]"
+  }
+ },
+ "Rules": {
+  "CheckBootstrapVersion": {
+   "Assertions": [
+    {
+     "Assert": {
+      "Fn::Not": [
+       {
+        "Fn::Contains": [
+         [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5"
+         ],
+         {
+          "Ref": "BootstrapVersion"
+         }
+        ]
+       }
+      ]
+     },
+     "AssertDescription": "CDK bootstrap stack version 6 required. Please run 'cdk bootstrap' with a recent version of the CDK CLI."
+    }
+   ]
+  }
+ }
+}
