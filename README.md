@@ -89,9 +89,9 @@ Additionally other AWS services are used for additional functionality
 ## Deployment Steps
 
 1. **Clone the repository**
-  ```bash
-  git clone <repository-url>
-  cd <repository-name>
+   ```bash
+   git clone <repository-url>
+   cd <repository-name>
 
 Run the setup script
 bash./scripts/setup.sh
