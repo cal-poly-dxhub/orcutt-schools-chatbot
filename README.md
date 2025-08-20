@@ -89,20 +89,24 @@ Additionally other AWS services are used for additional functionality
 ## Deployment Steps
 
 1. Clone the repository
-   git clone https://github.com/cal-poly-dxhub/orcutt-schools-chatbot
+- git clone https://github.com/cal-poly-dxhub/orcutt-schools-chatbot
 
 2. Run the setup script
-  ./scripts/setup.sh
-
-3. Start Docker
-
-Ensure Docker Desktop is running on your machine
-Verify Docker is running:
-
+```bash
+cd orcutt-schools-chatbot
+./scripts/setup.sh
+```
+  
+3. Start Docker Desktop
+- Verify Docker is running:
+```bash
 bashdocker --version
+```
 
 4. Configure AWS credentials
-   aws configure
+```bash
+aws configure
+```
 You'll be prompted to enter:
 
 AWS Access Key ID
@@ -112,18 +116,18 @@ Default output format
 
 
 5. Deploy the application
+```bash
 ./scripts/deploy.sh
+```
 
-
-Post-Deployment Manual Steps
+### Post-Deployment Manual Steps
 After deployment is complete, perform these 2 manual tasks:
 
-Run sync in knowledge base
-Add the ApiUrl to frontend configuration
+1. **Run sync in knowledge base**
 
-Navigate to frontend/services/apiService.js line 5
-Update the API URL with your deployed endpoint
-
+2. **Add the ApiUrl to frontend configuration**
+- Navigate to frontend/services/apiService.js line 5
+- Update the API URL with your deployed endpoint
 
 ## Support
 
