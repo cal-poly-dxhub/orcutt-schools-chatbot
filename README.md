@@ -7,7 +7,7 @@
 - [Overview](#overview)
 - [Architecture](#architecture)
 - [Support](#support)
-- [Deployment](#initial)
+- [Deployment](#initial-setup)
 
 # Collaboration
 
