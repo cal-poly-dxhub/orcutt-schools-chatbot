@@ -89,23 +89,20 @@ Additionally other AWS services are used for additional functionality
 ## Deployment Steps
 
 1. Clone the repository
-bashgit clone <repository-url>
+   git clone https://github.com/cal-poly-dxhub/orcutt-schools-chatbot
 
-2. Change directory
-bashcd <repository-name>
+2. Run the setup script
+  ./scripts/setup.sh
 
-3. Run the setup script
-bash./scripts/setup.sh
-
-4. Start Docker
+3. Start Docker
 
 Ensure Docker Desktop is running on your machine
 Verify Docker is running:
 
 bashdocker --version
 
-5. Configure AWS credentials
-bashaws configure
+4. Configure AWS credentials
+   aws configure
 You'll be prompted to enter:
 
 AWS Access Key ID
@@ -114,8 +111,8 @@ Default region name
 Default output format
 
 
-6. Deploy the application
-bash./scripts/deploy.sh
+5. Deploy the application
+./scripts/deploy.sh
 
 
 Post-Deployment Manual Steps
