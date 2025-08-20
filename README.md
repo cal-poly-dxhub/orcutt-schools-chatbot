@@ -7,6 +7,7 @@
 - [Overview](#overview)
 - [Architecture](#architecture)
 - [Support](#support)
+- [Deployment](#initial)
 
 # Collaboration
 
@@ -86,39 +87,53 @@ Additionally other AWS services are used for additional functionality
 - Request model access for the required models through AWS console in Bedrock (Amazon Titan Text V2 & Claude Sonnet 3.5 V2)
 - Docker Desktop
 
+
+## Initial Setup
+
+1. **Enable Bedrock Model Access:**
+   - Navigate to the AWS Bedrock console
+   - Request access to all models from both Anthropic and Amazon
+   - Ensure you're working in the correct AWS region/branch for your deployment
+  
+2. **Download and Start Docker Desktop**
+   - Verify Docker is running:
+    ```bash
+    bashdocker --version
+    ```
+    
 ## Deployment Steps
 
 1. Clone the repository
-- git clone https://github.com/cal-poly-dxhub/orcutt-schools-chatbot
+  - git clone https://github.com/cal-poly-dxhub/orcutt-schools-chatbot
 
 2. Run the setup script
-```bash
-cd orcutt-schools-chatbot
-./scripts/setup.sh
-```
+  ```bash
+  cd orcutt-schools-chatbot
+  ./scripts/setup.sh
+  ```
   
 3. Start Docker Desktop
-- Verify Docker is running:
-```bash
-bashdocker --version
-```
+  - Verify Docker is running:
+  ```bash
+  bashdocker --version
+  ```
 
 4. Configure AWS credentials
-```bash
-aws configure
-```
-You'll be prompted to enter:
-
-AWS Access Key ID
-AWS Secret Access Key
-Default region name
-Default output format
+  ```bash
+  aws configure
+  ```
+  You'll be prompted to enter:
+  
+  - AWS Access Key ID
+  - AWS Secret Access Key
+  - Default region name
+  - Default output format
 
 
 5. Deploy the application
-```bash
-./scripts/deploy.sh
-```
+  ```bash
+  ./scripts/deploy.sh
+  ```
 
 ### Post-Deployment Manual Steps
 After deployment is complete, perform these 2 manual tasks:
