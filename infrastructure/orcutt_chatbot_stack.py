@@ -58,7 +58,7 @@ class OrcuttChatbotStack(Stack):
             vpc=None
         )
 
-        # IAM Role for Bedrock Knowledge Base (now after domain is defined)
+        # IAM Role for Bedrock Knowledge Base
         bedrock_kb_role = iam.Role(
             self, "BedrockKnowledgeBaseRole",
             assumed_by=iam.ServicePrincipal("bedrock.amazonaws.com"),
@@ -176,14 +176,14 @@ class OrcuttChatbotStack(Stack):
                                 "es:ESHttpDelete",
                                 "es:ESHttpHead",
                                 "es:DescribeDomain",
-                                "es:DescribeElasticsearchDomain",  # Added this missing permission
+                                "es:DescribeElasticsearchDomain",
                                 "es:ListDomainNames",
                                 "es:ListElasticsearchInstanceTypes"
                             ],
                             resources=[
                                 domain.domain_arn, 
                                 f"{domain.domain_arn}/*",
-                                "*"  # Some ES operations require wildcard resource
+                                "*" 
                             ]
                         ),
                         iam.PolicyStatement(
@@ -201,7 +201,7 @@ class OrcuttChatbotStack(Stack):
             }
         )
 
-        # Lambda function - EXACT replica of your working standalone script
+        # Lambda function for creating Vector Index
         index_creator = lambda_.Function(
             self, "IndexCreator",
             runtime=lambda_.Runtime.PYTHON_3_9,
@@ -381,7 +381,6 @@ def handler(event, context):
             service_token=cr.Provider(
                 self, "IndexCreationProvider",
                 on_event_handler=index_creator
-                # Removed total_timeout - only valid with is_complete_handler
             ).service_token,
             properties={
                 "DomainName": self.config.get_opensearch_domain_name(),
@@ -402,7 +401,7 @@ def handler(event, context):
             ]
         )
 
-        #new
+        # Create the Knowledge Base
         kb = bedrock.CfnKnowledgeBase(self, "KnowledgeBase",
             name=self.config.KNOWLEDGE_BASE_NAME,
             role_arn=bedrock_role.role_arn,
@@ -452,11 +451,6 @@ def handler(event, context):
                 ),
             ),
         )
-
-
-
-
-
 
 
         # Web Scraper Layer
