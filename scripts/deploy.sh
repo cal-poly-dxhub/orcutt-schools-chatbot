@@ -31,7 +31,7 @@ if [ -f /tmp/cdk-outputs.json ]; then
     API_URL=$(cat /tmp/cdk-outputs.json | grep -o '"https://[^"]*execute-api[^"]*"' | head -1 | tr -d '"')
 else
     # Fallback: use CloudFormation API
-    API_URL=$(aws cloudformation describe-stacks --stack-name OrcuttChatbotStack3-dev --query 'Stacks[0].Outputs[?OutputKey==`ApiUrl`].OutputValue' --output text)
+    API_URL=$(aws cloudformation describe-stacks --stack-name OrcuttChatbotStack-dev --query 'Stacks[0].Outputs[?OutputKey==`ApiUrl`].OutputValue' --output text)
 fi
 echo "API URL: $API_URL"
 
