@@ -1,14 +1,81 @@
-# Orcutt Schools Chatbot
+  # Orcutt Schools Chatbot
 
-A serverless chatbot application built with AWS CDK, featuring a React frontend and AWS Bedrock-powered backend for school information queries.
+## Table of Contents
+
+- [Collaboration](#collaboration)
+- [Disclaimers](#disclaimers)
+- [Overview](#overview)
+- [Architecture](#architecture)
+- [Support](#support)
+
+# Collaboration
+
+Thanks for your interest in our solution. Having specific examples of replication and usage allows us to continue to grow and scale our work. If you clone or use this repository, kindly shoot us a quick email to let us know you are interested in this work!
+
+<wwps-cic@amazon.com>
+
+# Disclaimers
+
+**Customers are responsible for making their own independent assessment of the information in this document.**
+
+**This document:**
+
+(a) is for informational purposes only,
+
+(b) represents current AWS product offerings and practices, which are subject to change without notice, and
+
+(c) does not create any commitments or assurances from AWS and its affiliates, suppliers or licensors. AWS products or services are provided “as is” without warranties, representations, or conditions of any kind, whether express or implied. The responsibilities and liabilities of AWS to its customers are controlled by AWS agreements, and this document is not part of, nor does it modify, any agreement between AWS and its customers.
+
+(d) is not to be considered a recommendation or viewpoint of AWS
+
+**Additionally, all prototype code and associated assets should be considered:**
+
+(a) as-is and without warranties
+
+(b) not suitable for production environments
+
+(d) to include shortcuts in order to support rapid prototyping such as, but not limitted to, relaxed authentication and authorization and a lack of strict adherence to security best practices
+
+**All work produced is open source. More information can be found in the GitHub repo.**
+
+## Authors
+
+- Shrey Shah - <sshah84@calpoly.edu>
+
+## Overview
+
+An AI-powered chatbot built for Orcutt Schools to help students, parents, and staff get information about school programs, schedules, and policies.
 
 ## Architecture
 
-- **Frontend**: React application hosted on S3 with CloudFront distribution
-- **Backend**: AWS Lambda functions with API Gateway
-- **Database**: DynamoDB for conversation history
-- **AI**: AWS Bedrock Knowledge Base with Nova models
-- **Web Scraping**: Automated Lambda function for content ingestion
+The solution consists of several key components:
+
+1. Frontend Interface
+
+    - React 18 application
+    - AWS Amplify hosting with global CDN
+    - Tailwind CSS for responsive design
+
+2. API Layer
+
+    - Amazon API Gateway for REST endpoints
+    - AWS Lambda functions for serverless compute
+    - Cognito for Authentication and authorization middleware
+
+3. AI Services
+
+    - Amazon Bedrock with Claude 3.5 Sonnet for response generation
+    - AWS Knowledge Bases for semantic document search
+    - Nova Lite for query classification and intent recognition
+    - Bedrock Guardrails for content safety and filtering
+
+4. Data Storage and Management
+
+    - Amazon DynamoDB for conversation history and user sessions
+    - S3 buckets for document storage and knowledge base artifacts
+    - Amazon CloudWatch for application monitoring and logging
+
+Additionally other AWS services are used for additional functionality
 
 ## Prerequisites
 
@@ -16,141 +83,42 @@ A serverless chatbot application built with AWS CDK, featuring a React frontend 
 - Node.js 18+ (for frontend)
 - Python 3.13+ (for CDK and Lambda functions)
 - AWS CDK CLI installed (`npm install -g aws-cdk`)
+- Request model access for the required models through AWS console in Bedrock (Amazon Titan Text V2 & Claude Sonnet 3.5 V2)
+- Docker Desktop
 
-## Environment Setup
+## Deployment Steps
 
-1. **Clone and install dependencies:**
-```bash
-git clone <repository-url>
-cd orcutt_cdk
-pip install -r requirements.txt
-```
+1. **Clone the repository**
+  ```bash
+  git clone <repository-url>
+  cd <repository-name>
 
-2. **Configure environment variables:**
-```bash
-# Copy the example environment file
-cp .env.example .env
+Run the setup script
+bash./scripts/setup.sh
 
-# Edit .env with your actual values:
-# - CDK_DEFAULT_ACCOUNT: Your AWS account ID
-# - AWS_ACCESS_KEY_ID: Your AWS access key
-# - AWS_SECRET_ACCESS_KEY: Your AWS secret key
-# - KNOWLEDGE_BASE_ID: Your Bedrock knowledge base ID
-```
+Start Docker
 
-3. **Install frontend dependencies:**
-```bash
-cd frontend
-npm install
-cd ..
-```
+Ensure Docker Desktop is running on your machine
+Verify Docker is running: docker --version
 
-## Deployment
 
-### Development Environment
-```bash
-# Deploy to development
-export ENVIRONMENT=dev
-cdk deploy --require-approval never
-```
+Configure AWS credentials
+bashaws configure
+You'll be prompted to enter:
 
-### Production Environment
-```bash
-# Deploy to production
-export ENVIRONMENT=prod
-cdk deploy --require-approval never
-```
+AWS Access Key ID
+AWS Secret Access Key
+Default region name
+Default output format
 
-### Web Scraping Setup
-```bash
-# Run the web scraper to populate knowledge base
-python scripts/invoke_scraper.py
 
-# Create OpenSearch index (if needed)
-python scripts/lambda_index.py
-```
+Deploy the application
+bash./scripts/deploy.sh
 
-## Project Structure
 
-```
-orcutt_cdk/
-├── app.py                 # CDK app entry point
-├── config.py              # Configuration settings
-├── requirements.txt       # Python dependencies
-├── infrastructure/        # CDK stack definitions
-├── lambda/               # Lambda function code
-│   ├── chatbot/         # Main chatbot Lambda
-│   └── webscraper/      # Web scraping Lambda
-├── frontend/            # React application
-├── scripts/             # Utility scripts
-└── README.md
-```
+## Support
 
-## Configuration
+For any queries or issues, please contact:
 
-Edit `config.py` to customize:
-- AWS region and account settings
-- Lambda timeout and memory settings
-- CORS origins for API Gateway
-- Environment-specific configurations
-
-## API Endpoints
-
-After deployment, the following endpoints are available:
-
-- `POST /chat` - Send messages to chatbot
-- `POST /feedback` - Submit feedback for responses
-- `GET /sources` - Retrieve conversation sources
-
-## Frontend
-
-The React frontend provides:
-- Real-time chat interface
-- Conversation history
-- Source citations
-- Feedback system
-
-## Monitoring
-
-- CloudWatch logs for all Lambda functions
-- DynamoDB metrics for conversation storage
-- API Gateway metrics for request monitoring
-
-## Security
-
-- CORS configured for API Gateway
-- IAM roles with least privilege access
-- Environment-specific configurations
-- No hardcoded credentials
-
-## Development
-
-### Local Frontend Development
-```bash
-cd frontend
-npm start
-```
-
-### Testing Lambda Functions
-```bash
-# Test chatbot locally (requires AWS credentials)
-python lambda/chatbot/lambda_function.py
-```
-
-## Troubleshooting
-
-1. **CDK Deploy Issues**: Ensure AWS credentials are configured
-2. **Lambda Timeouts**: Check CloudWatch logs for performance issues
-3. **CORS Errors**: Verify API Gateway CORS configuration
-4. **Knowledge Base**: Ensure KNOWLEDGE_BASE_ID is set correctly
-
-## Contributing
-
-1. Create feature branch
-2. Make changes
-3. Test thoroughly
-4. Submit pull request
-
-## License
-
-[Add your license information here]
+- Darren Kraker - <dkraker@amazon.com>
+- Shrey Shah, Jr. SDE - <sshah84@calpoly.edu>
