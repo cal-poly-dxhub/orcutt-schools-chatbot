@@ -2,7 +2,7 @@
 import axios from 'axios';
 
 // Replace with your actual API Gateway URL
-const API_BASE_URL = 'https://jzovx0hf3j.execute-api.us-west-2.amazonaws.com/V4';
+const API_BASE_URL = '';
 
 // Create axios instance with default config
 const apiClient = axios.create({
