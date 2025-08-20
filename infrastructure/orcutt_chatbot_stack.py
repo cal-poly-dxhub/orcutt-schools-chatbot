@@ -1,4 +1,3 @@
-# infrastructure/orcutt_chatbot_stack.py
 from aws_cdk import (
     Stack,
     CfnOutput,
@@ -6,100 +5,767 @@ from aws_cdk import (
     aws_opensearchservice as opensearch,
     aws_iam as iam,
     aws_ec2 as ec2,
+    aws_lambda as lambda_,
+    aws_dynamodb,
+    aws_apigateway as apigateway,
+    aws_cloudfront as cloudfront,
+    aws_cloudfront_origins as origins,
+    aws_s3_deployment as s3deploy,
+    custom_resources as cr,
     RemovalPolicy,
+    Duration,
+    CustomResource,
+    aws_bedrock as bedrock
 )
 from constructs import Construct
-from cdklabs.generative_ai_cdk_constructs import (
-    bedrock,
-    opensearchmanagedcluster,
-)
-
+from config import get_config
+import json
 
 class OrcuttChatbotStack(Stack):
     def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
+        
+        # Load configuration
+        self.config = get_config()
 
         # S3 Bucket for knowledge base documents
         knowledge_base_bucket = s3.Bucket(
             self, "KnowledgeBaseBucket",
-            bucket_name=f"orcutt-chatbot-kb-v4-{self.account}-{self.region}",
+            bucket_name=self.config.get_s3_bucket_name('kb'),
             versioned=True,
             removal_policy=RemovalPolicy.DESTROY,
             auto_delete_objects=True
         )
+        source_bucket = s3.Bucket.from_bucket_name(self, "SourceBucket", self.config.get_s3_bucket_name('kb'))
 
         # OpenSearch Domain for Knowledge Base
         domain = opensearch.Domain(
             self, "KnowledgeBaseOpenSearch",
-            domain_name=f"orcutt-kb-v4-{self.account}",
-            version=opensearch.EngineVersion.OPENSEARCH_2_3,
+            domain_name=self.config.get_opensearch_domain_name(),
+            version=getattr(opensearch.EngineVersion, f"OPENSEARCH_{str(self.config.OPENSEARCH_VERSION).replace('.', '_')}"),
             capacity=opensearch.CapacityConfig(
-                data_node_instance_type="t3.small.search",
-                data_nodes=1
+                data_node_instance_type=self.config.OPENSEARCH_INSTANCE_TYPE,
+                data_nodes=self.config.OPENSEARCH_INSTANCE_COUNT
             ),
             ebs=opensearch.EbsOptions(
-                volume_size=10,
-                volume_type=ec2.EbsDeviceVolumeType.GP3
+                volume_size=self.config.OPENSEARCH_VOLUME_SIZE,
+                volume_type=getattr(ec2.EbsDeviceVolumeType, self.config.OPENSEARCH_VOLUME_TYPE.upper())
             ),
             node_to_node_encryption=True,
             encryption_at_rest=opensearch.EncryptionAtRestOptions(enabled=True),
             enforce_https=True,
             removal_policy=RemovalPolicy.DESTROY,
-            use_unsigned_basic_auth=True,
-            access_policies=[
-                iam.PolicyStatement(
-                    principals=[iam.ServicePrincipal("bedrock.amazonaws.com")],
-                    actions=["es:*"],
-                    resources=["*"]
-                )
-            ]
+            vpc=None
         )
 
-        # OpenSearch Vector Store for Knowledge Base
-        opensearch_vector_store = opensearchmanagedcluster.OpenSearchManagedClusterVectorStore(
-            domain_arn=domain.domain_arn,
-            domain_endpoint=f"https://{domain.domain_endpoint}",
-            vector_index_name="orcutt-vector-index",
-            field_mapping={
-                'metadata_field': 'metadata',
-                'text_field': 'text',
-                'vector_field': 'vector'
+        # IAM Role for Bedrock Knowledge Base (now after domain is defined)
+        bedrock_kb_role = iam.Role(
+            self, "BedrockKnowledgeBaseRole",
+            assumed_by=iam.ServicePrincipal("bedrock.amazonaws.com"),
+            inline_policies={
+                "S3Access": iam.PolicyDocument(
+                    statements=[
+                        iam.PolicyStatement(
+                            actions=[
+                                "s3:GetObject",
+                                "s3:ListBucket"
+                            ],
+                            resources=[
+                                knowledge_base_bucket.bucket_arn,
+                                f"{knowledge_base_bucket.bucket_arn}/*"
+                            ]
+                        )
+                    ]
+                ),
+                "BedrockAccess": iam.PolicyDocument(
+                    statements=[
+                        iam.PolicyStatement(
+                            actions=[
+                                "bedrock:InvokeModel"
+                            ],
+                            resources=[
+                                f"arn:aws:bedrock:{self.region}::foundation-model/amazon.titan-embed-text-v2:0"
+                            ]
+                        )
+                    ]
+                ),
+                "OpenSearchAccess": iam.PolicyDocument(
+                    statements=[
+                        # OpenSearch domain validation
+                        iam.PolicyStatement(
+                            sid="OpenSearchManagedClusterDomainValidation",
+                            actions=[
+                                "es:DescribeDomain"
+                            ],
+                            resources=[
+                                domain.domain_arn
+                            ]
+                        ),
+                        # Index-level access for CRUD operations
+                        iam.PolicyStatement(
+                            sid="OpenSearchManagedClusterIndexAccess",
+                            actions=[
+                                "es:ESHttpGet",
+                                "es:ESHttpPost", 
+                                "es:ESHttpPut",
+                                "es:ESHttpDelete"
+                            ],
+                            resources=[
+                                f"{domain.domain_arn}/orcuttindex/*"
+                            ]
+                        ),
+                        # Index metadata access
+                        iam.PolicyStatement(
+                            sid="OpenSearchManagedClusterGetIndexAccess",
+                            actions=[
+                                "es:ESHttpGet",
+                                "es:ESHttpHead"
+                            ],
+                            resources=[
+                                f"{domain.domain_arn}/orcuttindex"
+                            ]
+                        )
+                    ]
+                )
             }
         )
 
-        # Bedrock Knowledge Base using high-level construct
-        kb = bedrock.VectorKnowledgeBase(
-            self, 'OrcuttKnowledgeBase',
-            vector_store=opensearch_vector_store,
-            embeddings_model=bedrock.BedrockFoundationModel.TITAN_EMBED_TEXT_V2_512,
-            instruction='Use this knowledge base to answer questions about Orcutt Schools.'
+        # Add access policies to domain after bedrock_kb_role is defined
+        domain.add_access_policies(
+            iam.PolicyStatement(
+                principals=[
+                    iam.ServicePrincipal("bedrock.amazonaws.com"),
+                    bedrock_kb_role,
+                    iam.AccountRootPrincipal()
+                ],
+                actions=["es:*"],
+                resources=[f"arn:aws:es:{self.region}:{self.account}:domain/{self.config.get_opensearch_domain_name()}/*"]
+            )
         )
 
-        # S3 Data Source for Knowledge Base
-        bedrock.S3DataSource(
-            self, 'OrcuttDataSource',
-            bucket=knowledge_base_bucket,
-            knowledge_base=kb,
-            data_source_name='orcutt-school-docs',
-            chunking_strategy=bedrock.ChunkingStrategy.SEMANTIC,
-            inclusion_prefixes=['documents/']
+        # Lambda Layer for opensearch-py
+        opensearch_layer = lambda_.LayerVersion(
+            self, "OpenSearchLayer",
+            code=lambda_.Code.from_asset("lambda-layers/opensearch-layer", bundling={
+                "image": lambda_.Runtime.PYTHON_3_9.bundling_image,
+                "command": [
+                    "bash", "-c",
+                    "pip install -r requirements.txt -t /asset-output/python"
+                ]
+            }),
+            compatible_runtimes=[lambda_.Runtime.PYTHON_3_9],
+            description="OpenSearch Python client library"
+        )
+
+        # Enhanced IAM Role for Index Creator Lambda
+        index_creator_role = iam.Role(
+            self, "IndexCreatorRole",
+            assumed_by=iam.ServicePrincipal("lambda.amazonaws.com"),
+            managed_policies=[
+                iam.ManagedPolicy.from_aws_managed_policy_name("service-role/AWSLambdaBasicExecutionRole")
+            ],
+            inline_policies={
+                "OpenSearchAccess": iam.PolicyDocument(
+                    statements=[
+                        iam.PolicyStatement(
+                            actions=[
+                                "es:*",
+                                "es:ESHttpGet",
+                                "es:ESHttpPost", 
+                                "es:ESHttpPut",
+                                "es:ESHttpDelete",
+                                "es:ESHttpHead",
+                                "es:DescribeDomain",
+                                "es:DescribeElasticsearchDomain",  # Added this missing permission
+                                "es:ListDomainNames",
+                                "es:ListElasticsearchInstanceTypes"
+                            ],
+                            resources=[
+                                domain.domain_arn, 
+                                f"{domain.domain_arn}/*",
+                                "*"  # Some ES operations require wildcard resource
+                            ]
+                        ),
+                        iam.PolicyStatement(
+                            actions=[
+                                "opensearch:*"
+                            ],
+                            resources=[
+                                domain.domain_arn,
+                                f"{domain.domain_arn}/*",
+                                "*"
+                            ]
+                        )
+                    ]
+                )
+            }
+        )
+
+        # Lambda function - EXACT replica of your working standalone script
+        index_creator = lambda_.Function(
+            self, "IndexCreator",
+            runtime=lambda_.Runtime.PYTHON_3_9,
+            handler="index.handler",
+            role=index_creator_role,
+            timeout=Duration.minutes(10),
+            layers=[opensearch_layer],
+            environment={
+                "DOMAIN_NAME": self.config.get_opensearch_domain_name(),
+                "REGION": self.region
+            },
+            code=lambda_.Code.from_inline("""
+import json
+import boto3
+from opensearchpy import OpenSearch, RequestsHttpConnection, AWSV4SignerAuth
+
+def create_opensearch_index(domain_endpoint=None, index_name="orcuttindex", region="us-west-2"):
+    # Use provided endpoint or get it automatically
+    index_name = "orcuttindex"
+    if not domain_endpoint:
+        print("ERROR: No domain endpoint provided")
+        return False
+    
+    print(f"Creating index '{index_name}' on domain '{domain_endpoint}'")
+    
+    try:
+        # Set up OpenSearch client with AWS auth
+        service = "es"  # For managed clusters, use "es" not "aoss"
+        credentials = boto3.Session().get_credentials()
+        awsauth = AWSV4SignerAuth(credentials, region, service)
+        
+        os_client = OpenSearch(
+            hosts=[{"host": domain_endpoint, "port": 443}],
+            http_auth=awsauth,
+            use_ssl=True,
+            verify_certs=True,
+            timeout=300,
+            connection_class=RequestsHttpConnection,
+        )
+        
+        # Simplified index mapping that should work
+        mapping = {
+            "settings": {
+                "index.knn": True
+            },
+            "mappings": {
+                "dynamic": True,
+                "properties": {
+                    "vector": {
+                        "type": "knn_vector",
+                        "dimension": 1024,
+                        "method": {
+                            "name": "hnsw",
+                            "space_type": "l2",
+                            "engine": "FAISS",
+                            "parameters": {}
+                        }
+                    },
+                    "text": {
+                        "type": "text",
+                        "fields": {"keyword": {"type": "keyword"}}
+                    },
+                    "metadata": {
+                        "type": "object",
+                        "enabled": False
+                    }
+                }
+            }
+        }
+        
+        # Check if index exists, create if not
+        if not os_client.indices.exists(index=index_name):
+            print(f"Index '{index_name}' does not exist. Creating...")
+            response = os_client.indices.create(index=index_name, body=mapping)
+            print(f"Create response: {response}")
+            
+            # Verify creation
+            if os_client.indices.exists(index=index_name):
+                print(f"Index '{index_name}' created successfully.")
+                return True
+            else:
+                print(f"Failed to create index '{index_name}'")
+                return False
+        else:
+            print(f"Index '{index_name}' already exists!")
+            
+            # Optionally, get index info
+            try:
+                index_info = os_client.indices.get(index=index_name)
+                print(f"Index mapping: {json.dumps(index_info[index_name]['mappings'], indent=2, default=str)}")
+            except Exception as e:
+                print(f"Could not get index info: {e}")
+            return True
+            
+    except Exception as e:
+        print(f"ERROR: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+def get_domain_endpoint(domain_name, region):
+    \"\"\"Helper function to get your OpenSearch domain endpoint\"\"\"
+    try:
+        opensearch_client = boto3.client('opensearch', region_name=region)
+        response = opensearch_client.describe_domain(DomainName=domain_name)
+        endpoint = response['DomainStatus']['Endpoint']
+        print(f"Found domain endpoint: {endpoint}")
+        return endpoint
+    except Exception as e:
+        print(f"Error getting domain endpoint: {e}")
+        return None
+
+def handler(event, context):
+    print("Starting OpenSearch Index Creation Lambda")
+    print(f"Event: {json.dumps(event, default=str)}")
+    
+    if event['RequestType'] == 'Delete':
+        print("Delete event - skipping index deletion for safety")
+        return {
+            'Status': 'SUCCESS', 
+            'PhysicalResourceId': 'vector-index',
+            'Data': {'Message': 'Index deletion skipped for safety'}
+        }
+    
+    try:
+        # Get parameters from CDK
+        domain_name = event['ResourceProperties']['DomainName']
+        region = event['ResourceProperties']['Region']
+        index_name = event['ResourceProperties']['IndexName']
+        
+        print(f"Starting OpenSearch Index Creation Script")
+        print(f"Domain: {domain_name}, Region: {region}, Index: {index_name}")
+        
+        # First, try to get the domain endpoint automatically
+        auto_endpoint = get_domain_endpoint(domain_name, region)
+        if auto_endpoint:
+            print(f"Using auto-detected endpoint: {auto_endpoint}")
+        
+        # Create the index (using dynamic parameters)
+        success = create_opensearch_index(
+            domain_endpoint=auto_endpoint,
+            index_name=index_name,
+            region=region
+        )
+        
+        if success:
+            print("Script completed successfully!")
+            return {
+                'Status': 'SUCCESS',
+                'PhysicalResourceId': f'vector-index-{index_name}',
+                'Data': {
+                    'IndexName': index_name,
+                    'Message': f'Index {index_name} created successfully'
+                }
+            }
+        else:
+            print("Script failed!")
+            return {
+                'Status': 'FAILED',
+                'Reason': 'Index creation failed'
+            }
+            
+    except Exception as e:
+        print(f"Lambda Error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return {
+            'Status': 'FAILED',
+            'Reason': f"Lambda failed: {str(e)}"
+        }
+""")
+        )
+
+        # Custom resource to create/check the vector index
+        index_creation = CustomResource(
+            self, "VectorIndexCreation",
+            service_token=cr.Provider(
+                self, "IndexCreationProvider",
+                on_event_handler=index_creator
+                # Removed total_timeout - only valid with is_complete_handler
+            ).service_token,
+            properties={
+                "DomainName": self.config.get_opensearch_domain_name(),
+                "IndexName": self.config.OPENSEARCH_INDEX_NAME,
+                "Region": self.region
+            }
+        )
+
+        # Ensure index is created after domain
+        index_creation.node.add_dependency(domain)
+
+        bedrock_role = iam.Role(self, "BedrockKBRole",
+            assumed_by=iam.ServicePrincipal("bedrock.amazonaws.com"),
+            managed_policies=[
+                iam.ManagedPolicy.from_aws_managed_policy_name("AmazonBedrockFullAccess"),
+                iam.ManagedPolicy.from_aws_managed_policy_name("AmazonOpenSearchServiceFullAccess"),
+                iam.ManagedPolicy.from_aws_managed_policy_name("AmazonS3ReadOnlyAccess")
+            ]
+        )
+
+        #new
+        kb = bedrock.CfnKnowledgeBase(self, "KnowledgeBase",
+            name=self.config.KNOWLEDGE_BASE_NAME,
+            role_arn=bedrock_role.role_arn,
+            knowledge_base_configuration=bedrock.CfnKnowledgeBase.KnowledgeBaseConfigurationProperty(
+                type="VECTOR",
+                vector_knowledge_base_configuration=bedrock.CfnKnowledgeBase.VectorKnowledgeBaseConfigurationProperty(
+                    embedding_model_arn=f"arn:aws:bedrock:{self.region}::foundation-model/{self.config.EMBEDDING_MODEL}"
+                ),
+            ),
+            storage_configuration=bedrock.CfnKnowledgeBase.StorageConfigurationProperty(
+                type="OPENSEARCH_MANAGED_CLUSTER",
+                opensearch_managed_cluster_configuration=bedrock.CfnKnowledgeBase.OpenSearchManagedClusterConfigurationProperty(
+                    domain_endpoint=f"https://{domain.domain_endpoint}",
+                    domain_arn=domain.domain_arn,
+                    vector_index_name=self.config.OPENSEARCH_INDEX_NAME,
+                    field_mapping=bedrock.CfnKnowledgeBase.OpenSearchManagedClusterFieldMappingProperty(
+                        vector_field=self.config.OPENSEARCH_VECTOR_FIELD,
+                        text_field=self.config.OPENSEARCH_TEXT_FIELD,
+                        metadata_field=self.config.OPENSEARCH_METADATA_FIELD
+                    )
+                )
+            )
+        )
+                
+        kb.node.add_dependency(index_creation)
+
+        # Create the data source
+        data_source = bedrock.CfnDataSource(
+            self,
+            "KnowledgeBaseDataSource",
+            knowledge_base_id=kb.ref,
+            name=source_bucket.bucket_name,
+            data_source_configuration=bedrock.CfnDataSource.DataSourceConfigurationProperty(
+                type="S3",
+                s3_configuration=bedrock.CfnDataSource.S3DataSourceConfigurationProperty(
+                    bucket_arn=source_bucket.bucket_arn
+                ),
+            ),
+            vector_ingestion_configuration=bedrock.CfnDataSource.VectorIngestionConfigurationProperty(
+                chunking_configuration=bedrock.CfnDataSource.ChunkingConfigurationProperty(
+                    chunking_strategy=self.config.CHUNKING_STRATEGY,
+                    semantic_chunking_configuration=bedrock.CfnDataSource.SemanticChunkingConfigurationProperty(
+                        breakpoint_percentile_threshold=self.config.CHUNKING_BREAKPOINT_THRESHOLD,
+                        buffer_size=self.config.CHUNKING_BUFFER_SIZE,
+                        max_tokens=self.config.CHUNKING_MAX_TOKENS,
+                    ),
+                ),
+            ),
+        )
+
+
+
+
+
+
+
+        # Web Scraper Layer
+        webscraper_layer = lambda_.LayerVersion(
+            self, "WebScraperLayer",
+            code=lambda_.Code.from_asset("lambda-layers/webscraper-layer", bundling={
+                "image": lambda_.Runtime.PYTHON_3_13.bundling_image,
+                "command": [
+                    "bash", "-c",
+                    "pip install -r requirements.txt -t /asset-output/python"
+                ]
+            }),
+            compatible_runtimes=[lambda_.Runtime.PYTHON_3_13],
+            description="Web scraping dependencies"
+        )
+
+        # Web Scraper Lambda Function
+        webscraper_lambda = lambda_.Function(
+            self, "WebScraperLambda",
+            runtime=lambda_.Runtime.PYTHON_3_13,
+            architecture=lambda_.Architecture.X86_64,
+            handler="lambda_function.lambda_handler",
+            code=lambda_.Code.from_asset("lambda/webscraper"),
+            timeout=Duration.seconds(self.config.WEBSCRAPER_TIMEOUT),
+            layers=[webscraper_layer],
+            environment={
+                "S3_BUCKET_NAME": source_bucket.bucket_name
+            },
+            memory_size=self.config.WEBSCRAPER_MEMORY
+        )
+
+        # Grant S3 permissions to Lambda
+        source_bucket.grant_write(webscraper_lambda)
+        
+        # Grant Bedrock permissions to webscraper for auto-sync
+        webscraper_lambda.add_to_role_policy(
+            iam.PolicyStatement(
+                actions=["bedrock:StartIngestionJob", "bedrock:GetIngestionJob"],
+                resources=[f"arn:aws:bedrock:{self.region}:{self.account}:knowledge-base/*"]
+            )
+        )
+        
+        # Custom resource to trigger webscraper and sync
+        webscraper_trigger = lambda_.Function(
+            self, "WebscraperTrigger",
+            runtime=lambda_.Runtime.PYTHON_3_13,
+            handler="index.handler",
+            timeout=Duration.minutes(15),
+            code=lambda_.Code.from_inline("""
+import json
+import boto3
+import time
+
+def handler(event, context):
+    if event['RequestType'] == 'Delete':
+        return {'Status': 'SUCCESS', 'PhysicalResourceId': 'webscraper-trigger'}
+    
+    try:
+        lambda_client = boto3.client('lambda')
+        bedrock_agent = boto3.client('bedrock-agent')
+        
+        # Get parameters
+        webscraper_arn = event['ResourceProperties']['WebscraperArn']
+        kb_id = event['ResourceProperties']['KnowledgeBaseId']
+        data_source_id = event['ResourceProperties']['DataSourceId']
+        
+        # List of all school websites to scrape
+        websites = [
+            'https://orcuttschools.net',
+            'https://orcuttacademy.orcuttschools.net',
+            'https://oahs.orcuttschools.net',
+            'https://lakeview.orcuttschools.net',
+            'https://ojhs.orcuttschools.net',
+            'https://aliceshaw.orcuttschools.net',
+            'https://joenightingale.orcuttschools.net',
+            'https://olgareed.orcuttschools.net',
+            'https://pattersonroad.orcuttschools.net',
+            'https://pinegrove.orcuttschools.net',
+            'https://ralphdunlap.orcuttschools.net',
+            'https://osis.orcuttschools.net'
+        ]
+        
+        print(f"Scraping {len(websites)} school websites...")
+        
+        # Scrape each website sequentially
+        for i, base_url in enumerate(websites, 1):
+            print(f"Scraping {i}/{len(websites)}: {base_url}")
+            
+            response = lambda_client.invoke(
+                FunctionName=webscraper_arn,
+                InvocationType='RequestResponse',
+                Payload=json.dumps({
+                    'base_url': base_url,
+                    's3_bucket': event['ResourceProperties']['S3Bucket'],
+                    'max_workers': 20,
+                    'max_pages': 200
+                })
+            )
+            
+            # Check if webscraper succeeded
+            payload = json.loads(response['Payload'].read())
+            if payload.get('statusCode') != 200:
+                print(f"Warning: {base_url} failed: {payload}")
+                # Continue with other sites instead of failing completely
+            else:
+                print(f"Successfully scraped: {base_url}")
+        
+        print("All websites scraping completed")
+        
+        # Start knowledge base sync
+        print(f"Starting KB sync for: {kb_id}")
+        sync_response = bedrock_agent.start_ingestion_job(
+            knowledgeBaseId=kb_id,
+            dataSourceId=data_source_id
+        )
+        
+        print(f"Knowledge base sync started: {sync_response['ingestionJob']['ingestionJobId']}")
+        
+        return {
+            'Status': 'SUCCESS',
+            'PhysicalResourceId': 'webscraper-trigger',
+            'Data': {
+                'Message': 'Webscraper and KB sync completed',
+                'IngestionJobId': sync_response['ingestionJob']['ingestionJobId']
+            }
+        }
+        
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        return {
+            'Status': 'FAILED',
+            'Reason': str(e)
+        }
+""")
+        )
+        
+        # Grant permissions to trigger Lambda
+        webscraper_trigger.add_to_role_policy(
+            iam.PolicyStatement(
+                actions=["lambda:InvokeFunction"],
+                resources=[webscraper_lambda.function_arn]
+            )
+        )
+        
+        webscraper_trigger.add_to_role_policy(
+            iam.PolicyStatement(
+                actions=["bedrock:StartIngestionJob", "bedrock:GetIngestionJob"],
+                resources=[f"arn:aws:bedrock:{self.region}:{self.account}:knowledge-base/*"]
+            )
+        )
+        
+        # Custom resource that triggers after everything is ready
+        webscraper_execution = CustomResource(
+            self, "WebscraperExecution",
+            service_token=cr.Provider(
+                self, "WebscraperExecutionProvider",
+                on_event_handler=webscraper_trigger
+            ).service_token,
+            properties={
+                "WebscraperArn": webscraper_lambda.function_arn,
+                "KnowledgeBaseId": kb.ref,
+                "DataSourceId": data_source.ref,
+                "S3Bucket": source_bucket.bucket_name
+            }
+        )
+        
+        # Ensure this runs after everything is created
+        webscraper_execution.node.add_dependency(data_source)
+        webscraper_execution.node.add_dependency(webscraper_lambda)
+
+        # DynamoDB table for conversation history
+        conversation_table = aws_dynamodb.Table(
+            self, "ConversationTable",
+            table_name=self.config.get_dynamodb_table_name(),
+            partition_key=aws_dynamodb.Attribute(
+                name="session_id",
+                type=aws_dynamodb.AttributeType.STRING
+            ),
+            sort_key=aws_dynamodb.Attribute(
+                name="timestamp",
+                type=aws_dynamodb.AttributeType.STRING
+            ),
+            billing_mode=aws_dynamodb.BillingMode.PAY_PER_REQUEST,
+            removal_policy=RemovalPolicy.DESTROY
+        )
+
+        # Chatbot Lambda Function
+        chatbot_lambda = lambda_.Function(
+            self, "ChatbotLambda",
+            runtime=lambda_.Runtime.PYTHON_3_13,
+            architecture=lambda_.Architecture.X86_64,
+            handler="lambda_function.lambda_handler",
+            code=lambda_.Code.from_asset("lambda/chatbot"),
+            timeout=Duration.seconds(self.config.CHATBOT_TIMEOUT),
+            memory_size=self.config.CHATBOT_MEMORY,
+            environment={
+                "DYNAMODB_TABLE": conversation_table.table_name,
+                "KNOWLEDGE_BASE_ID": kb.ref
+            }
+        )
+
+        # Grant permissions to chatbot Lambda
+        conversation_table.grant_read_write_data(chatbot_lambda)
+        chatbot_lambda.add_to_role_policy(
+            iam.PolicyStatement(
+                actions=["bedrock:*"],
+                resources=["*"]
+            )
+        )
+
+        # API Gateway
+        api = apigateway.RestApi(
+            self, "ChatbotApi",
+            rest_api_name=self.config.API_NAME,
+            default_cors_preflight_options=apigateway.CorsOptions(
+                allow_origins=self.config.API_CORS_ALLOW_ORIGINS,
+                allow_methods=self.config.API_CORS_ALLOW_METHODS,
+                allow_headers=self.config.API_CORS_ALLOW_HEADERS
+            )
+        )
+
+        # API Gateway resources and methods
+        lambda_integration = apigateway.LambdaIntegration(chatbot_lambda)
+        
+        # /chat resource
+        chat_resource = api.root.add_resource("chat")
+        chat_resource.add_method("POST", lambda_integration)
+        
+        # /feedback resource
+        feedback_resource = api.root.add_resource("feedback")
+        feedback_resource.add_method("POST", lambda_integration)
+        
+        # /sources resource
+        sources_resource = api.root.add_resource("sources")
+        
+        # /sources/{sourceId} resource
+        source_id_resource = sources_resource.add_resource("{sourceId}")
+        source_id_resource.add_method("GET", lambda_integration)
+
+        # Frontend S3 bucket
+        frontend_bucket = s3.Bucket(
+            self, "FrontendBucket",
+            removal_policy=RemovalPolicy.DESTROY,
+            auto_delete_objects=True
+        )
+
+        # CloudFront distribution
+        error_responses = []
+        for error_config in self.config.CLOUDFRONT_ERROR_RESPONSES:
+            error_responses.append(
+                cloudfront.ErrorResponse(
+                    http_status=error_config['http_status'],
+                    response_http_status=error_config['response_http_status'],
+                    response_page_path=error_config['response_page_path']
+                )
+            )
+        
+        distribution = cloudfront.Distribution(
+            self, "FrontendDistribution",
+            default_behavior=cloudfront.BehaviorOptions(
+                origin=origins.S3Origin(frontend_bucket),
+                viewer_protocol_policy=cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS
+            ),
+            default_root_object=self.config.CLOUDFRONT_DEFAULT_ROOT_OBJECT,
+            error_responses=error_responses
+        )
+
+        # Deploy React build to S3 (build folder must exist)
+        s3deploy.BucketDeployment(
+            self, "DeployFrontend",
+            sources=[s3deploy.Source.asset("frontend/build")],
+            destination_bucket=frontend_bucket,
+            distribution=distribution,
+            distribution_paths=["/*"]
         )
 
         # Outputs
         CfnOutput(
+            self, "WebScraperLambdaArn",
+            value=webscraper_lambda.function_arn,
+            description="Web scraper Lambda function ARN"
+        )
+
+        CfnOutput(
+            self, "ChatbotLambdaArn",
+            value=chatbot_lambda.function_arn,
+            description="Chatbot Lambda function ARN"
+        )
+
+        CfnOutput(
+            self, "ApiUrl",
+            value=api.url,
+            description="API Gateway URL"
+        )
+
+        CfnOutput(
+            self, "WebsiteUrl",
+            value=f"https://{distribution.distribution_domain_name}",
+            description="CloudFront URL"
+        )
+
+        CfnOutput(
             self, "S3BucketName",
-            value=knowledge_base_bucket.bucket_name,
+            value=source_bucket.bucket_name,
             description="S3 bucket for knowledge base"
         )
 
         CfnOutput(
-            self, "OpenSearchDomainEndpoint",
-            value=domain.domain_endpoint,
-            description="OpenSearch domain endpoint"
-        )
-
-        CfnOutput(
-            self, "KnowledgeBaseId",
-            value=kb.knowledge_base_id,
-            description="Bedrock Knowledge Base ID"
+            self, "DynamoDBTableName",
+            value=conversation_table.table_name,
+            description="DynamoDB table for conversations"
         )

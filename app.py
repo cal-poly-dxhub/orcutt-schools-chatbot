@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
-import os
 from aws_cdk import App
 from infrastructure.orcutt_chatbot_stack import OrcuttChatbotStack
+from config import get_config
 
+config = get_config()
 app = App()
 
-OrcuttChatbotStack(app, "OrcuttChatbotStackV2",
+OrcuttChatbotStack(app, config.get_stack_name(),
     env={
-        "account": os.environ.get("CDK_DEFAULT_ACCOUNT"),
-        "region": os.environ.get("CDK_DEFAULT_REGION", "us-west-2")
+        "account": config.AWS_ACCOUNT,
+        "region": config.AWS_REGION
     }
 )
 

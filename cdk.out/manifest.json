@@ -1,28 +1,28 @@
 {
   "version": "48.0.0",
   "artifacts": {
-    "OrcuttChatbotStackV2.assets": {
+    "OrcuttChatbotStackTest4-dev.assets": {
       "type": "cdk:asset-manifest",
       "properties": {
-        "file": "OrcuttChatbotStackV2.assets.json",
+        "file": "OrcuttChatbotStackTest4-dev.assets.json",
         "requiresBootstrapStackVersion": 6,
         "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version"
       }
     },
-    "OrcuttChatbotStackV2": {
+    "OrcuttChatbotStackTest4-dev": {
       "type": "aws:cloudformation:stack",
       "environment": "aws://412072465402/us-west-2",
       "properties": {
-        "templateFile": "OrcuttChatbotStackV2.template.json",
+        "templateFile": "OrcuttChatbotStackTest4-dev.template.json",
         "terminationProtection": false,
         "validateOnSynth": false,
         "assumeRoleArn": "arn:${AWS::Partition}:iam::412072465402:role/cdk-hnb659fds-deploy-role-412072465402-us-west-2",
         "cloudFormationExecutionRoleArn": "arn:${AWS::Partition}:iam::412072465402:role/cdk-hnb659fds-cfn-exec-role-412072465402-us-west-2",
-        "stackTemplateAssetObjectUrl": "s3://cdk-hnb659fds-assets-412072465402-us-west-2/04c00c8e3e71fb6069a07be3acd0d3e2bc315741624968594b28b2fedac9b8d5.json",
+        "stackTemplateAssetObjectUrl": "s3://cdk-hnb659fds-assets-412072465402-us-west-2/0e1c53b4aefd7b99a0c32bf3e08426b8e836290f80a928938eec9b613f5ad72b.json",
         "requiresBootstrapStackVersion": 6,
         "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version",
         "additionalDependencies": [
-          "OrcuttChatbotStackV2.assets"
+          "OrcuttChatbotStackTest4-dev.assets"
         ],
         "lookupRole": {
           "arn": "arn:${AWS::Partition}:iam::412072465402:role/cdk-hnb659fds-lookup-role-412072465402-us-west-2",
@@ -31,76 +31,76 @@
         }
       },
       "dependencies": [
-        "OrcuttChatbotStackV2.assets"
+        "OrcuttChatbotStackTest4-dev.assets"
       ],
       "metadata": {
-        "/OrcuttChatbotStackV2/KnowledgeBaseBucket/Resource": [
+        "/OrcuttChatbotStackTest4-dev/KnowledgeBaseBucket/Resource": [
           {
             "type": "aws:cdk:logicalId",
             "data": "KnowledgeBaseBucketC011DD60"
           }
         ],
-        "/OrcuttChatbotStackV2/KnowledgeBaseBucket/Policy/Resource": [
+        "/OrcuttChatbotStackTest4-dev/KnowledgeBaseBucket/Policy/Resource": [
           {
             "type": "aws:cdk:logicalId",
             "data": "KnowledgeBaseBucketPolicyB9428EE4"
           }
         ],
-        "/OrcuttChatbotStackV2/KnowledgeBaseBucket/AutoDeleteObjectsCustomResource/Default": [
+        "/OrcuttChatbotStackTest4-dev/KnowledgeBaseBucket/AutoDeleteObjectsCustomResource/Default": [
           {
             "type": "aws:cdk:logicalId",
             "data": "KnowledgeBaseBucketAutoDeleteObjectsCustomResource69389698"
           }
         ],
-        "/OrcuttChatbotStackV2/Custom::S3AutoDeleteObjectsCustomResourceProvider": [
+        "/OrcuttChatbotStackTest4-dev/Custom::S3AutoDeleteObjectsCustomResourceProvider": [
           {
             "type": "aws:cdk:is-custom-resource-handler-customResourceProvider",
             "data": true
           }
         ],
-        "/OrcuttChatbotStackV2/Custom::S3AutoDeleteObjectsCustomResourceProvider/Role": [
+        "/OrcuttChatbotStackTest4-dev/Custom::S3AutoDeleteObjectsCustomResourceProvider/Role": [
           {
             "type": "aws:cdk:logicalId",
             "data": "CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092"
           }
         ],
-        "/OrcuttChatbotStackV2/Custom::S3AutoDeleteObjectsCustomResourceProvider/Handler": [
+        "/OrcuttChatbotStackTest4-dev/Custom::S3AutoDeleteObjectsCustomResourceProvider/Handler": [
           {
             "type": "aws:cdk:logicalId",
             "data": "CustomS3AutoDeleteObjectsCustomResourceProviderHandler9D90184F"
           }
         ],
-        "/OrcuttChatbotStackV2/KnowledgeBaseOpenSearch": [
+        "/OrcuttChatbotStackTest4-dev/KnowledgeBaseOpenSearch": [
           {
             "type": "aws:cdk:hasPhysicalName",
-            "data": "orcutt-kb-v4-412072465402"
+            "data": "orcutt-kb-test4-dev-dev-4654"
           }
         ],
-        "/OrcuttChatbotStackV2/KnowledgeBaseOpenSearch/MasterUser/Resource": [
-          {
-            "type": "aws:cdk:logicalId",
-            "data": "KnowledgeBaseOpenSearchMasterUserDC0F9903"
-          }
-        ],
-        "/OrcuttChatbotStackV2/KnowledgeBaseOpenSearch/Resource": [
+        "/OrcuttChatbotStackTest4-dev/KnowledgeBaseOpenSearch/Resource": [
           {
             "type": "aws:cdk:logicalId",
             "data": "KnowledgeBaseOpenSearchD4869173"
           }
         ],
-        "/OrcuttChatbotStackV2/KnowledgeBaseOpenSearch/AccessPolicy/Resource/Default": [
+        "/OrcuttChatbotStackTest4-dev/KnowledgeBaseOpenSearch/AccessPolicy/Resource/Default": [
           {
             "type": "aws:cdk:logicalId",
             "data": "KnowledgeBaseOpenSearchAccessPolicyA902DF61"
           }
         ],
-        "/OrcuttChatbotStackV2/KnowledgeBaseOpenSearch/AccessPolicy/CustomResourcePolicy/Resource": [
+        "/OrcuttChatbotStackTest4-dev/KnowledgeBaseOpenSearch/AccessPolicy/CustomResourcePolicy/Resource": [
           {
             "type": "aws:cdk:logicalId",
             "data": "KnowledgeBaseOpenSearchAccessPolicyCustomResourcePolicy551ABABA"
           }
         ],
-        "/OrcuttChatbotStackV2/AWS679f53fac002430cb0da5b7982bd2287": [
+        "/OrcuttChatbotStackTest4-dev/BedrockKnowledgeBaseRole/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "BedrockKnowledgeBaseRole24C5E17B"
+          }
+        ],
+        "/OrcuttChatbotStackTest4-dev/AWS679f53fac002430cb0da5b7982bd2287": [
           {
             "type": "aws:cdk:is-custom-resource-handler-singleton",
             "data": true
@@ -110,86 +110,434 @@
             "data": 0
           }
         ],
-        "/OrcuttChatbotStackV2/AWS679f53fac002430cb0da5b7982bd2287/ServiceRole/Resource": [
+        "/OrcuttChatbotStackTest4-dev/AWS679f53fac002430cb0da5b7982bd2287/ServiceRole/Resource": [
           {
             "type": "aws:cdk:logicalId",
             "data": "AWS679f53fac002430cb0da5b7982bd2287ServiceRoleC1EA0FF2"
           }
         ],
-        "/OrcuttChatbotStackV2/AWS679f53fac002430cb0da5b7982bd2287/Resource": [
+        "/OrcuttChatbotStackTest4-dev/AWS679f53fac002430cb0da5b7982bd2287/Resource": [
           {
             "type": "aws:cdk:logicalId",
             "data": "AWS679f53fac002430cb0da5b7982bd22872D164C4C"
           }
         ],
-        "/OrcuttChatbotStackV2/OrcuttKnowledgeBase/Role/Resource": [
+        "/OrcuttChatbotStackTest4-dev/OpenSearchLayer/Resource": [
           {
             "type": "aws:cdk:logicalId",
-            "data": "OrcuttKnowledgeBaseRoleF97586B3"
+            "data": "OpenSearchLayer06B0C9F8"
           }
         ],
-        "/OrcuttChatbotStackV2/OrcuttKnowledgeBase/Role/DefaultPolicy/Resource": [
+        "/OrcuttChatbotStackTest4-dev/IndexCreatorRole/Resource": [
           {
             "type": "aws:cdk:logicalId",
-            "data": "OrcuttKnowledgeBaseRoleDefaultPolicy339C7819"
+            "data": "IndexCreatorRoleACA1D62F"
           }
         ],
-        "/OrcuttChatbotStackV2/OrcuttKnowledgeBase/MyCfnKnowledgeBase": [
+        "/OrcuttChatbotStackTest4-dev/IndexCreator/Resource": [
           {
             "type": "aws:cdk:logicalId",
-            "data": "OrcuttKnowledgeBaseMyCfnKnowledgeBase2E0E9562"
+            "data": "IndexCreatorF5592A41"
           }
         ],
-        "/OrcuttChatbotStackV2/OrcuttKnowledgeBase/KBCRPolicy/Resource": [
+        "/OrcuttChatbotStackTest4-dev/IndexCreationProvider/framework-onEvent/ServiceRole/Resource": [
           {
             "type": "aws:cdk:logicalId",
-            "data": "OrcuttKnowledgeBaseKBCRPolicy09191E28"
+            "data": "IndexCreationProviderframeworkonEventServiceRole6874B12D"
           }
         ],
-        "/OrcuttChatbotStackV2/OrcuttDataSource/DataSource": [
+        "/OrcuttChatbotStackTest4-dev/IndexCreationProvider/framework-onEvent/ServiceRole/DefaultPolicy/Resource": [
           {
             "type": "aws:cdk:logicalId",
-            "data": "OrcuttDataSource5EE7D058"
+            "data": "IndexCreationProviderframeworkonEventServiceRoleDefaultPolicy4A25585B"
           }
         ],
-        "/OrcuttChatbotStackV2/S3BucketName": [
+        "/OrcuttChatbotStackTest4-dev/IndexCreationProvider/framework-onEvent/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "IndexCreationProviderframeworkonEvent38543C62"
+          }
+        ],
+        "/OrcuttChatbotStackTest4-dev/VectorIndexCreation/Default": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "VectorIndexCreation"
+          }
+        ],
+        "/OrcuttChatbotStackTest4-dev/BedrockKBRole/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "BedrockKBRole10C55766"
+          }
+        ],
+        "/OrcuttChatbotStackTest4-dev/KnowledgeBase": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "KnowledgeBase"
+          }
+        ],
+        "/OrcuttChatbotStackTest4-dev/KnowledgeBaseDataSource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "KnowledgeBaseDataSource"
+          }
+        ],
+        "/OrcuttChatbotStackTest4-dev/WebScraperLayer/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "WebScraperLayer617B0251"
+          }
+        ],
+        "/OrcuttChatbotStackTest4-dev/WebScraperLambda/ServiceRole/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "WebScraperLambdaServiceRole221EBF9C"
+          }
+        ],
+        "/OrcuttChatbotStackTest4-dev/WebScraperLambda/ServiceRole/DefaultPolicy/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "WebScraperLambdaServiceRoleDefaultPolicyD61E1E7A"
+          }
+        ],
+        "/OrcuttChatbotStackTest4-dev/WebScraperLambda/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "WebScraperLambdaCFDBA852"
+          }
+        ],
+        "/OrcuttChatbotStackTest4-dev/WebscraperTrigger/ServiceRole/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "WebscraperTriggerServiceRole83E29742"
+          }
+        ],
+        "/OrcuttChatbotStackTest4-dev/WebscraperTrigger/ServiceRole/DefaultPolicy/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "WebscraperTriggerServiceRoleDefaultPolicy39E60265"
+          }
+        ],
+        "/OrcuttChatbotStackTest4-dev/WebscraperTrigger/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "WebscraperTrigger148F42C1"
+          }
+        ],
+        "/OrcuttChatbotStackTest4-dev/WebscraperExecutionProvider/framework-onEvent/ServiceRole/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "WebscraperExecutionProviderframeworkonEventServiceRoleAA560124"
+          }
+        ],
+        "/OrcuttChatbotStackTest4-dev/WebscraperExecutionProvider/framework-onEvent/ServiceRole/DefaultPolicy/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "WebscraperExecutionProviderframeworkonEventServiceRoleDefaultPolicy977F270B"
+          }
+        ],
+        "/OrcuttChatbotStackTest4-dev/WebscraperExecutionProvider/framework-onEvent/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "WebscraperExecutionProviderframeworkonEventE2C5A858"
+          }
+        ],
+        "/OrcuttChatbotStackTest4-dev/WebscraperExecution/Default": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "WebscraperExecution"
+          }
+        ],
+        "/OrcuttChatbotStackTest4-dev/ConversationTable": [
+          {
+            "type": "aws:cdk:hasPhysicalName",
+            "data": {
+              "Ref": "ConversationTable75C14D21"
+            }
+          }
+        ],
+        "/OrcuttChatbotStackTest4-dev/ConversationTable/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ConversationTable75C14D21"
+          }
+        ],
+        "/OrcuttChatbotStackTest4-dev/ChatbotLambda/ServiceRole/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ChatbotLambdaServiceRole9AE6E90B"
+          }
+        ],
+        "/OrcuttChatbotStackTest4-dev/ChatbotLambda/ServiceRole/DefaultPolicy/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ChatbotLambdaServiceRoleDefaultPolicy50C60BA3"
+          }
+        ],
+        "/OrcuttChatbotStackTest4-dev/ChatbotLambda/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ChatbotLambda4595A29D"
+          }
+        ],
+        "/OrcuttChatbotStackTest4-dev/ChatbotApi/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ChatbotApiF211B502"
+          }
+        ],
+        "/OrcuttChatbotStackTest4-dev/ChatbotApi/Deployment/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ChatbotApiDeploymentB7895815df16fef6243ed2c8239c593288078144"
+          }
+        ],
+        "/OrcuttChatbotStackTest4-dev/ChatbotApi/DeploymentStage.prod/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ChatbotApiDeploymentStageprod27096855"
+          }
+        ],
+        "/OrcuttChatbotStackTest4-dev/ChatbotApi/Endpoint": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ChatbotApiEndpointAA2295B0"
+          }
+        ],
+        "/OrcuttChatbotStackTest4-dev/ChatbotApi/Default/OPTIONS/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ChatbotApiOPTIONSCF12C1F3"
+          }
+        ],
+        "/OrcuttChatbotStackTest4-dev/ChatbotApi/Default/chat/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ChatbotApichat329FA5B8"
+          }
+        ],
+        "/OrcuttChatbotStackTest4-dev/ChatbotApi/Default/chat/OPTIONS/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ChatbotApichatOPTIONSE9EAEBA1"
+          }
+        ],
+        "/OrcuttChatbotStackTest4-dev/ChatbotApi/Default/chat/POST/ApiPermission.OrcuttChatbotStackTest4devChatbotApi9E889B0D.POST..chat": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ChatbotApichatPOSTApiPermissionOrcuttChatbotStackTest4devChatbotApi9E889B0DPOSTchat9F455E33"
+          }
+        ],
+        "/OrcuttChatbotStackTest4-dev/ChatbotApi/Default/chat/POST/ApiPermission.Test.OrcuttChatbotStackTest4devChatbotApi9E889B0D.POST..chat": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ChatbotApichatPOSTApiPermissionTestOrcuttChatbotStackTest4devChatbotApi9E889B0DPOSTchat803876CA"
+          }
+        ],
+        "/OrcuttChatbotStackTest4-dev/ChatbotApi/Default/chat/POST/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ChatbotApichatPOST2BCC1CB9"
+          }
+        ],
+        "/OrcuttChatbotStackTest4-dev/ChatbotApi/Default/feedback/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ChatbotApifeedback05546C8D"
+          }
+        ],
+        "/OrcuttChatbotStackTest4-dev/ChatbotApi/Default/feedback/OPTIONS/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ChatbotApifeedbackOPTIONS1670D90B"
+          }
+        ],
+        "/OrcuttChatbotStackTest4-dev/ChatbotApi/Default/feedback/POST/ApiPermission.OrcuttChatbotStackTest4devChatbotApi9E889B0D.POST..feedback": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ChatbotApifeedbackPOSTApiPermissionOrcuttChatbotStackTest4devChatbotApi9E889B0DPOSTfeedbackA0762F31"
+          }
+        ],
+        "/OrcuttChatbotStackTest4-dev/ChatbotApi/Default/feedback/POST/ApiPermission.Test.OrcuttChatbotStackTest4devChatbotApi9E889B0D.POST..feedback": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ChatbotApifeedbackPOSTApiPermissionTestOrcuttChatbotStackTest4devChatbotApi9E889B0DPOSTfeedback7143C5C7"
+          }
+        ],
+        "/OrcuttChatbotStackTest4-dev/ChatbotApi/Default/feedback/POST/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ChatbotApifeedbackPOST7FA45129"
+          }
+        ],
+        "/OrcuttChatbotStackTest4-dev/ChatbotApi/Default/sources/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ChatbotApisources07A7BC46"
+          }
+        ],
+        "/OrcuttChatbotStackTest4-dev/ChatbotApi/Default/sources/OPTIONS/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ChatbotApisourcesOPTIONS8EFA6C73"
+          }
+        ],
+        "/OrcuttChatbotStackTest4-dev/ChatbotApi/Default/sources/{sourceId}/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ChatbotApisourcessourceIdD10C5D2B"
+          }
+        ],
+        "/OrcuttChatbotStackTest4-dev/ChatbotApi/Default/sources/{sourceId}/OPTIONS/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ChatbotApisourcessourceIdOPTIONSBBB2B521"
+          }
+        ],
+        "/OrcuttChatbotStackTest4-dev/ChatbotApi/Default/sources/{sourceId}/GET/ApiPermission.OrcuttChatbotStackTest4devChatbotApi9E889B0D.GET..sources.{sourceId}": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ChatbotApisourcessourceIdGETApiPermissionOrcuttChatbotStackTest4devChatbotApi9E889B0DGETsourcessourceId107CF8A1"
+          }
+        ],
+        "/OrcuttChatbotStackTest4-dev/ChatbotApi/Default/sources/{sourceId}/GET/ApiPermission.Test.OrcuttChatbotStackTest4devChatbotApi9E889B0D.GET..sources.{sourceId}": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ChatbotApisourcessourceIdGETApiPermissionTestOrcuttChatbotStackTest4devChatbotApi9E889B0DGETsourcessourceIdECCD74B8"
+          }
+        ],
+        "/OrcuttChatbotStackTest4-dev/ChatbotApi/Default/sources/{sourceId}/GET/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ChatbotApisourcessourceIdGETA584D997"
+          }
+        ],
+        "/OrcuttChatbotStackTest4-dev/FrontendBucket/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "FrontendBucketEFE2E19C"
+          }
+        ],
+        "/OrcuttChatbotStackTest4-dev/FrontendBucket/Policy/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "FrontendBucketPolicy1DFF75D9"
+          }
+        ],
+        "/OrcuttChatbotStackTest4-dev/FrontendBucket/AutoDeleteObjectsCustomResource/Default": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "FrontendBucketAutoDeleteObjectsCustomResourceDB860B32"
+          }
+        ],
+        "/OrcuttChatbotStackTest4-dev/FrontendDistribution/Origin1/S3Origin/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "FrontendDistributionOrigin1S3OriginC94250A2"
+          }
+        ],
+        "/OrcuttChatbotStackTest4-dev/FrontendDistribution/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "FrontendDistributionE6EAF405"
+          }
+        ],
+        "/OrcuttChatbotStackTest4-dev/DeployFrontend/AwsCliLayer/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "DeployFrontendAwsCliLayerD774ED8F"
+          }
+        ],
+        "/OrcuttChatbotStackTest4-dev/DeployFrontend/CustomResource/Default": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "DeployFrontendCustomResource3E02C3B7"
+          }
+        ],
+        "/OrcuttChatbotStackTest4-dev/Custom::CDKBucketDeployment8693BB64968944B69AAFB0CC9EB8756C": [
+          {
+            "type": "aws:cdk:is-custom-resource-handler-singleton",
+            "data": true
+          },
+          {
+            "type": "aws:cdk:is-custom-resource-handler-runtime-family",
+            "data": 2
+          }
+        ],
+        "/OrcuttChatbotStackTest4-dev/Custom::CDKBucketDeployment8693BB64968944B69AAFB0CC9EB8756C/ServiceRole/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "CustomCDKBucketDeployment8693BB64968944B69AAFB0CC9EB8756CServiceRole89A01265"
+          }
+        ],
+        "/OrcuttChatbotStackTest4-dev/Custom::CDKBucketDeployment8693BB64968944B69AAFB0CC9EB8756C/ServiceRole/DefaultPolicy/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "CustomCDKBucketDeployment8693BB64968944B69AAFB0CC9EB8756CServiceRoleDefaultPolicy88902FDF"
+          }
+        ],
+        "/OrcuttChatbotStackTest4-dev/Custom::CDKBucketDeployment8693BB64968944B69AAFB0CC9EB8756C/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "CustomCDKBucketDeployment8693BB64968944B69AAFB0CC9EB8756C81C01536"
+          }
+        ],
+        "/OrcuttChatbotStackTest4-dev/WebScraperLambdaArn": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "WebScraperLambdaArn"
+          }
+        ],
+        "/OrcuttChatbotStackTest4-dev/ChatbotLambdaArn": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ChatbotLambdaArn"
+          }
+        ],
+        "/OrcuttChatbotStackTest4-dev/ApiUrl": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ApiUrl"
+          }
+        ],
+        "/OrcuttChatbotStackTest4-dev/WebsiteUrl": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "WebsiteUrl"
+          }
+        ],
+        "/OrcuttChatbotStackTest4-dev/S3BucketName": [
           {
             "type": "aws:cdk:logicalId",
             "data": "S3BucketName"
           }
         ],
-        "/OrcuttChatbotStackV2/OpenSearchDomainEndpoint": [
+        "/OrcuttChatbotStackTest4-dev/DynamoDBTableName": [
           {
             "type": "aws:cdk:logicalId",
-            "data": "OpenSearchDomainEndpoint"
+            "data": "DynamoDBTableName"
           }
         ],
-        "/OrcuttChatbotStackV2/KnowledgeBaseId": [
-          {
-            "type": "aws:cdk:logicalId",
-            "data": "KnowledgeBaseId"
-          }
-        ],
-        "/OrcuttChatbotStackV2/CDKMetadata/Default": [
+        "/OrcuttChatbotStackTest4-dev/CDKMetadata/Default": [
           {
             "type": "aws:cdk:logicalId",
             "data": "CDKMetadata"
           }
         ],
-        "/OrcuttChatbotStackV2/BootstrapVersion": [
+        "/OrcuttChatbotStackTest4-dev/BootstrapVersion": [
           {
             "type": "aws:cdk:logicalId",
             "data": "BootstrapVersion"
           }
         ],
-        "/OrcuttChatbotStackV2/CheckBootstrapVersion": [
+        "/OrcuttChatbotStackTest4-dev/CheckBootstrapVersion": [
           {
             "type": "aws:cdk:logicalId",
             "data": "CheckBootstrapVersion"
           }
         ]
       },
-      "displayName": "OrcuttChatbotStackV2"
+      "displayName": "OrcuttChatbotStackTest4-dev"
     },
     "Tree": {
       "type": "cdk:tree",
@@ -694,5 +1042,5 @@
       }
     }
   },
-  "minimumCliVersion": "2.1024.0"
+  "minimumCliVersion": "2.1025.0"
 }

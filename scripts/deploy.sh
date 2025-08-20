@@ -2,47 +2,35 @@
 
 # Orcutt Chatbot Deployment Script
 
-echo "🚀 Starting Orcutt Chatbot deployment..."
+set -e
 
-# Check if CDK is installed
-if ! command -v cdk &> /dev/null; then
-    echo "❌ CDK CLI not found. Please install it first:"
-    echo "npm install -g aws-cdk"
-    exit 1
+# Activate virtual environment if it exists
+if [ -d "venv" ]; then
+    echo "Activating virtual environment..."
+    source venv/bin/activate
 fi
 
-# Check if Python virtual environment exists
-if [ ! -d "venv" ]; then
-    echo "📦 Creating Python virtual environment..."
-    python -m venv venv
+# Load environment variables if .env exists
+if [ -f .env ]; then
+    echo "Loading environment variables..."
+    export $(cat .env | grep -v '^#' | xargs)
 fi
 
-# Activate virtual environment
-echo "🔧 Activating virtual environment..."
-source venv/bin/activate
+# Set default environment if not specified
+ENVIRONMENT=${ENVIRONMENT:-dev}
 
-# Install CDK dependencies
-echo "📥 Installing CDK dependencies..."
-pip install -r requirements.txt
+echo "Deploying Orcutt Chatbot to $ENVIRONMENT environment..."
 
-# Install Lambda dependencies
-echo "📥 Installing Lambda dependencies..."
-pip install -r lambda/requirements.txt -t lambda/
+# Build frontend
+echo "Building frontend..."
+cd frontend
+npm install
+npm run build
+cd ..
 
-# Bootstrap CDK (run only once per account/region)
-echo "🏗️  Bootstrapping CDK..."
-cdk bootstrap
-
-# Synthesize CloudFormation template
-echo "🔍 Synthesizing CloudFormation template..."
-cdk synth
-
-# Deploy the stack
-echo "🚀 Deploying stack..."
+# Deploy CDK stack
+echo "Deploying CDK stack..."
 cdk deploy --require-approval never
 
-echo "✅ Deployment complete!"
-echo "📝 Don't forget to update these environment variables in the Lambda function:"
-echo "   - KNOWLEDGE_BASE_ID"
-echo "   - GUARDRAIL_ID"
-echo "   - GUARDRAIL_VERSION"
+echo "Deployment complete!"
+echo "Check AWS Console for deployed resources"

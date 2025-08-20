@@ -19,6 +19,18 @@ import logging
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
+school_url_dict =    {'Orcutt Academy K-8': 'orcuttacademy.orcuttschools.net',
+   'Orcutt Academy High School': 'oahs.orcuttschools.net',
+   'Lakeview Junior High': 'lakeview.orcuttschools.net',
+   'Orcutt Junior High': 'ojhs.orcuttschools.net',
+   'Alice Shaw Elementary': 'aliceshaw.orcuttschools.net',
+   'Joe Nightingale Elementary': 'joenightingale.orcuttschools.net',
+   'Olga Reed School K-8': 'olgareed.orcuttschools.net',
+   'Patterson Road Elementary': 'pattersonroad.orcuttschools.net',
+   'Pine Grove Elementary': 'pinegrove.orcuttschools.net',
+   'Ralph Dunlap Elementary': 'ralphdunlap.orcuttschools.net',
+   'Orcutt School for Independent Study': 'osis.orcuttschools.net'}
+
 def lambda_handler(event, context):
     """Main Lambda handler for chat requests and feedback with full functionality"""
     
@@ -48,6 +60,10 @@ def lambda_handler(event, context):
         # Otherwise handle as chat request (existing logic)
         message = body.get('message', '').strip()
         session_id = body.get('sessionId', str(uuid.uuid4()))
+
+        selected_school = body.get('selectedSchool')
+        if selected_school is None:
+            selected_school = "None"
         
         if not message or not session_id:
             return create_error_response(400, "Message/Session ID is missing")
@@ -56,7 +72,7 @@ def lambda_handler(event, context):
         chatbot = OrcuttChatbot()
         
         # Process the chat request
-        result = chatbot.process_chat_request(message, session_id)
+        result = chatbot.process_chat_request(message, session_id, selected_school)
         
         return {
             'statusCode': 200,
@@ -156,7 +172,7 @@ class OrcuttChatbot:
             logger.error(f"Failed to initialize AWS clients: {str(e)}")
             raise
     
-    def process_chat_request(self, message: str, session_id: str) -> Dict:
+    def process_chat_request(self, message: str, session_id: str, selected_school: str) -> Dict:
         """Main method to process chat request with full functionality"""
         start_time = time.time()
         
@@ -186,17 +202,23 @@ class OrcuttChatbot:
             # Step 4: Get context from knowledge base if needed
             context = ""
             sources = []
+            kb_response_school_specific = {}
             
             if query_type == 'knowledge_base':
                 knowledge_base_id = os.environ.get('KNOWLEDGE_BASE_ID')
                 if knowledge_base_id:
-                    kb_response = self.query_knowledge_base_semantic(message, knowledge_base_id)
-                    context, sources = self.process_knowledge_base_response(kb_response)
+                    kb_response_main_domain = self.query_knowledge_base_semantic(message, knowledge_base_id, "orcuttschools.net")
+                    logger.info(f"line 211 {selected_school}")
+                    if selected_school != "None":
+                        kb_response_school_specific = self.query_knowledge_base_semantic(message, knowledge_base_id, school_url_dict[selected_school.strip()])
+                        logger.info(f"selected_school: {selected_school}")
+                        logger.info(kb_response_school_specific)
+                    context, sources = self.process_knowledge_base_response([kb_response_main_domain, kb_response_school_specific])
             
             # Step 5: Generate response with conversation context
             conversation_context = self.format_conversation_context(conversation_history)
             response_text, generation_time = self.generate_response(
-                message, context, query_type, conversation_context
+                message, context, query_type, conversation_context, selected_school
             )
             
             total_time = round(time.time() - start_time, 2)
@@ -459,8 +481,9 @@ Respond with ONLY the category name (greeting, farewell, or knowledge_base). No 
             logging.error(f"Error applying Bedrock Guardrails: {str(e)}")
             return True
     
-    def query_knowledge_base_semantic(self, query: str, knowledge_base_id: str) -> Dict:
+    def query_knowledge_base_semantic(self, query: str, knowledge_base_id: str, metadata_filter: str) -> Dict:
         """Query Knowledge Base using only semantic search with z-score filtering"""
+        logger.info(f"metadata_filter: {metadata_filter}")
         try:
             # Use only semantic search
             response = self.bedrock_agent_runtime.retrieve(
@@ -469,7 +492,13 @@ Respond with ONLY the category name (greeting, farewell, or knowledge_base). No 
                 retrievalConfiguration={
                     'vectorSearchConfiguration': {
                         'numberOfResults': 10,
-                        'overrideSearchType': 'SEMANTIC'
+                        'overrideSearchType': 'SEMANTIC',
+                        'filter': {
+                            'equals': {
+                                'key': 'domain',
+                                'value': metadata_filter
+                            }
+                        }
                     }
                 }
             )            
@@ -479,67 +508,78 @@ Respond with ONLY the category name (greeting, farewell, or knowledge_base). No 
             logging.error(f"Error querying knowledge base: {str(e)}")
             return {}
     
-    def process_knowledge_base_response(self, kb_response: Dict) -> Tuple[str, List]:
-        """Process knowledge base response and extract context and sources"""
+    def process_knowledge_base_response(self, kb_responses: List[Dict]) -> Tuple[str, List]:
+        """Process multiple knowledge base responses and extract context and sources"""
         try:
             context = ""
             sources = []
+            source_counter = 1
             
-            if 'retrievalResults' in kb_response:
-                
-                for i, result in enumerate(kb_response['retrievalResults']):
-                    if 'content' in result and 'text' in result['content']:
-                        chunk_text = result['content']['text']
+            # Process each kb_response dictionary
+            for kb_response in kb_responses:
+                if 'retrievalResults' in kb_response:
+                    
+                    for result in kb_response['retrievalResults']:
+                        if 'content' in result and 'text' in result['content']:
+                            chunk_text = result['content']['text']
 
-                        if 'meeting_date' in result['metadata']:
-                            meeting_date = result['metadata']['meeting_date']
+                            if 'meeting_date' in result['metadata']:
+                                meeting_date = result['metadata']['meeting_date']
+                            else:
+                                meeting_date = "NA"
 
+                            if 'source' in result['metadata']:
+                                source_url = result['metadata']['source']
+                            else:
+                                source_url = "NA"
+
+                            if 'domain' in result['metadata']:
+                                logger.info(f"domain_1: {result['metadata']['domain']}")
+                                domain = next((k for k, v in school_url_dict.items() if v == result['metadata']['domain']), None) #get name of school from the dictionary
+                            else:
+                                domain = "NA"
+                                
+                            logger.info(f"domain: {domain}")
+                            context += f"[Source {source_counter}]: Meeting Date: {meeting_date} source_url: {source_url} School Domain: {domain} \n {chunk_text}\n\n"
+                            
+                            # Extract source metadata
+                            source_info = {
+                                "filename": f"Source {source_counter}", 
+                                "url": None, 
+                                "s3Uri": None, 
+                                "presignedUrl": None
+                            }
+                            
+                            if 'location' in result:
+                                s3_location = result['location'].get('s3Location', {})
+                                if 'uri' in s3_location:
+                                    s3_uri = s3_location['uri']
+                                    filename = s3_uri.split('/')[-1]
+                                    source_info["filename"] = filename
+                                    source_info["s3Uri"] = s3_uri
+                                    
+                                    # Generate pre-signed URL with page number if available
+                                    presigned_url = self.generate_presigned_url(s3_uri)
+                                    page_number = result.get('metadata', {}).get('x-amz-bedrock-kb-document-page-number')
+                                    if page_number and presigned_url:
+                                        source_info["presignedUrl"] = f"{presigned_url}#page={page_number}"
+                                    else:
+                                        source_info["presignedUrl"] = presigned_url
+                                    
+                                    # Check for source URL in metadata
+                                    if 'metadata' in result and 'source' in result['metadata']:
+                                        source_info["url"] = source_url
+                            
+                            sources.append(source_info)
+                            source_counter += 1
                         else:
-                            meeting_date = "NA"
-
-                        if 'source' in result['metadata']:
-                            source_url = result['metadata']['source']
-                        
-                        context += f"[Source {i+1}]: Meeting Date: {meeting_date} source_url: {source_url}  {chunk_text}\n\n"
-                        
-                        # Extract source metadata
-                        source_info = {
-                            "filename": f"Source {i+1}", 
-                            "url": None, 
-                            "s3Uri": None, 
-                            "presignedUrl": None
-                        }
-                        
-                        if 'location' in result:
-                            s3_location = result['location'].get('s3Location', {})
-                            if 'uri' in s3_location:
-                                s3_uri = s3_location['uri']
-                                filename = s3_uri.split('/')[-1]
-                                source_info["filename"] = filename
-                                source_info["s3Uri"] = s3_uri
-                                
-                                # Generate pre-signed URL with page number if available
-                                presigned_url = self.generate_presigned_url(s3_uri)
-                                page_number = result.get('metadata', {}).get('x-amz-bedrock-kb-document-page-number')
-                                if page_number and presigned_url:
-                                    source_info["presignedUrl"] = f"{presigned_url}#page={page_number}"
-                                else:
-                                    source_info["presignedUrl"] = presigned_url
-                                
-                                # Check for source URL in metadata
-                                if 'metadata' in result and 'source' in result['metadata']:
-                                    source_info["url"] = source_url
-                        
-                        sources.append(source_info)
-                    else:
-                        break
-
+                            break
             
             return context, sources
         
         except Exception as e:
-            logging.error(f"Error processing knowledge base response: {str(e)}")
-            return "", {}
+            logging.error(f"Error processing knowledge base responses: {str(e)}")
+            return "", []
     
     def generate_presigned_url(self, s3_uri: str) -> str:
         """Generate pre-signed URL for S3 object"""
@@ -563,7 +603,7 @@ Respond with ONLY the category name (greeting, farewell, or knowledge_base). No 
             logging.error(f"Error generating presigned URL: {str(e)}")
             return None
     
-    def generate_response(self, query: str, context: str, query_type: str, conversation_context: str) -> Tuple[str, float]:
+    def generate_response(self, query: str, context: str, query_type: str, conversation_context: str, selected_school: str) -> Tuple[str, float]:
         """Generate response using Claude with conversation context"""
         start_time = time.time()
         
@@ -589,7 +629,7 @@ What would you like to know about Orcutt Schools?"""
             else:  # knowledge_base
                 prompt = f"""
 You are an intelligent assistant for Orcutt Schools that provides helpful information to students, parents, staff, and community members.
-
+ 
 Today's date is {date.today()}. Answer according to today's date
 
 Recent conversation context:
@@ -600,12 +640,15 @@ Knowledge Base Context:
 
 Current User Question: {query}
 
+The user has selected {selected_school} school
+
 Use retrieved context to provide accurate, detailed responses
 If information is insufficient, clearly state "I don't have specific information about [topic]"
 Suggest contacting Orcutt Schools directly when appropriate
 NEVER say "The provided context does not relate to your question"
 If the meeting_date for sources is given, use the source with the latest meeting_date but do not mention the meeting_date in your answer
 For questions like where can I find ... answer it using the source_url instead of giving a generalized answer
+If the user question is school specific then use the school domain specific sources to answer the question
 
 STEP-BY-STEP GUIDANCE:
 For complex processes (enrollment, registration, applications), provide complete information first
