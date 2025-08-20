@@ -1,8 +1,8 @@
 // src/services/apiService.js
 import axios from 'axios';
 
-// Replace with your actual API Gateway URL
-const API_BASE_URL = '';
+// API Gateway URL
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || '';
 
 // Create axios instance with default config
 const apiClient = axios.create({
