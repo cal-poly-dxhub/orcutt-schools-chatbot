@@ -88,21 +88,23 @@ Additionally other AWS services are used for additional functionality
 
 ## Deployment Steps
 
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd <repository-name>
+1. Clone the repository
+bashgit clone <repository-url>
 
-Run the setup script
+2. Change directory
+bashcd <repository-name>
+
+3. Run the setup script
 bash./scripts/setup.sh
 
-Start Docker
+4. Start Docker
 
 Ensure Docker Desktop is running on your machine
-Verify Docker is running: docker --version
+Verify Docker is running:
 
+bashdocker --version
 
-Configure AWS credentials
+5. Configure AWS credentials
 bashaws configure
 You'll be prompted to enter:
 
@@ -112,8 +114,18 @@ Default region name
 Default output format
 
 
-Deploy the application
+6. Deploy the application
 bash./scripts/deploy.sh
+
+
+Post-Deployment Manual Steps
+After deployment is complete, perform these 2 manual tasks:
+
+Run sync in knowledge base
+Add the ApiUrl to frontend configuration
+
+Navigate to frontend/services/apiService.js line 5
+Update the API URL with your deployed endpoint
 
 
 ## Support
