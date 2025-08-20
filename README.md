@@ -136,13 +136,10 @@ Additionally other AWS services are used for additional functionality
   ```
 
 ### Post-Deployment Manual Steps
-After deployment is complete, perform these 2 manual tasks:
+After deployment is complete, perform this manual task:
 
-1. **Run sync in knowledge base**
+  - Run sync in Knowledge Base
 
-2. **Add the ApiUrl to frontend configuration**
-- Navigate to frontend/services/apiService.js line 5
-- Update the API URL with your deployed endpoint
 
 ## Support
 
