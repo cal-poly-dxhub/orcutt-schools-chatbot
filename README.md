@@ -84,7 +84,7 @@ Additionally other AWS services are used for additional functionality
 - Node.js 18+ (for frontend)
 - Python 3.13+ (for CDK and Lambda functions)
 - AWS CDK CLI installed (`npm install -g aws-cdk`)
-- Request model access for the required models through AWS console in Bedrock (Amazon Titan Text V2 & Claude Sonnet 3.5 V2)
+- Request model access for the required models through AWS console in Bedrock (Amazon Titan Text V2, Claude Sonnet 3.5 V2 & Amazon Nova Lite)
 - Docker Desktop
 
 
