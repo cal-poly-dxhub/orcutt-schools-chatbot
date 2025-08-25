@@ -628,6 +628,8 @@ Respond with ONLY the category name (greeting, farewell, knowledge_base, knowled
         """Generate response using Claude with conversation context"""
         start_time = time.time()
         
+        sources_used = []
+
         try:
             if query_type == 'greeting':
                 response_text = """Hello! I'm here to help you with information about our schools. Ask me about:
@@ -706,11 +708,12 @@ At the end of your response include a python list of the sources used, you will 
                 
                 response_body = json.loads(response['body'].read())
                 response_text = response_body['content'][0]['text']
-                response_time = round(time.time() - start_time, 2)
+                response_text, sources_used = parse_response(response_text)
+
                 logger.info(f"response: {response}")
 
-                # response_text = response["output"]["message"]["content"][1]["text"]
-                response_text, sources_used = parse_response(response_text)
+            response_time = round(time.time() - start_time, 2)
+
             return response_text, response_time, sources_used
                 
         except Exception as e:
