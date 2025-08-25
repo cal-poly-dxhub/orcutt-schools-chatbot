@@ -228,14 +228,17 @@ class OrcuttChatbot:
                     selected_school = list(school_url_dict.keys())[int(query_type.split("_")[-1]) - 1]
                 knowledge_base_id = os.environ.get('KNOWLEDGE_BASE_ID')
                 if knowledge_base_id:
-                    kb_response_main_domain = self.query_knowledge_base_semantic(message, knowledge_base_id, "orcuttschools.net")
                     if selected_school != "None":
+                        # Add selected school to the query
+                        message = message + " " + selected_school
                         kb_response_school_specific = self.query_knowledge_base_semantic(message, knowledge_base_id, school_url_dict[selected_school.strip()])
 
+                    kb_response_main_domain = self.query_knowledge_base_semantic(message, knowledge_base_id, "orcuttschools.net")
                     context, sources = self.process_knowledge_base_response([kb_response_main_domain, kb_response_school_specific])
             
             # Step 5: Generate response with conversation context
             conversation_context = self.format_conversation_context(conversation_history)
+
             response_text, generation_time, sources_used = self.generate_response(
                 message, context, query_type, conversation_context, selected_school
             )  
