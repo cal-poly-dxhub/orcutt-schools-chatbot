@@ -14,6 +14,7 @@ from decimal import Decimal
 from datetime import datetime, timezone, timedelta, date
 from boto3.dynamodb.conditions import Key, Attr
 import logging
+import re
 
 # Set up logger
 logger = logging.getLogger()
@@ -30,6 +31,24 @@ school_url_dict =    {'Orcutt Academy K-8': 'orcuttacademy.orcuttschools.net',
    'Pine Grove Elementary': 'pinegrove.orcuttschools.net',
    'Ralph Dunlap Elementary': 'ralphdunlap.orcuttschools.net',
    'Orcutt School for Independent Study': 'osis.orcuttschools.net'}
+
+def parse_response(response_text: str):
+    """
+    Extract sources list from <sources_used>[...]</sources_used>
+    and return (cleaned_text, sources_list).
+    """
+    pattern = r"<sources_used>\[(.*?)\]</sources_used>"
+    match = re.search(pattern, response_text)
+
+    sources = []
+    if match:
+        # Split numbers by comma and convert to int
+        sources = [int(x.strip()) for x in match.group(1).split(",") if x.strip().isdigit()]
+
+        # Remove the <sources_used>...</sources_used> part from text
+        response_text = re.sub(pattern, "", response_text).strip()
+
+    return response_text, sources
 
 def lambda_handler(event, context):
     """Main Lambda handler for chat requests and feedback with full functionality"""
@@ -203,25 +222,27 @@ class OrcuttChatbot:
             context = ""
             sources = []
             kb_response_school_specific = {}
-            
-            if query_type == 'knowledge_base':
+        
+            if 'knowledge_base' in query_type:
+                if query_type != 'knowledge_base':
+                    selected_school = list(school_url_dict.keys())[int(query_type.split("_")[-1]) - 1]
                 knowledge_base_id = os.environ.get('KNOWLEDGE_BASE_ID')
                 if knowledge_base_id:
                     kb_response_main_domain = self.query_knowledge_base_semantic(message, knowledge_base_id, "orcuttschools.net")
-                    logger.info(f"line 211 {selected_school}")
                     if selected_school != "None":
                         kb_response_school_specific = self.query_knowledge_base_semantic(message, knowledge_base_id, school_url_dict[selected_school.strip()])
-                        logger.info(f"selected_school: {selected_school}")
-                        logger.info(kb_response_school_specific)
+
                     context, sources = self.process_knowledge_base_response([kb_response_main_domain, kb_response_school_specific])
             
             # Step 5: Generate response with conversation context
             conversation_context = self.format_conversation_context(conversation_history)
-            response_text, generation_time = self.generate_response(
+            response_text, generation_time, sources_used = self.generate_response(
                 message, context, query_type, conversation_context, selected_school
-            )
-            
+            )  
             total_time = round(time.time() - start_time, 2)
+
+            # Just pass the sources used
+            sources_new = [sources[i - 1] for i in sources_used if 0 < i <= len(sources)]
             
             # Step 6: Save conversation to DynamoDB
             message_id = self.save_conversation_to_dynamodb(session_id, message, response_text, sources, total_time, query_type)
@@ -233,7 +254,7 @@ class OrcuttChatbot:
                 'messageId': message_id,  # Include message ID for frontend feedback
                 'queryType': query_type,
                 'responseTime': total_time,
-                'sources': sources
+                'sources': sources_new
             }
             
         except Exception as e:
@@ -400,24 +421,21 @@ CATEGORIES:
 1. "greeting" - Initial hellos, good morning/afternoon/evening, introductory messages
 2. "farewell" - Thank you messages, goodbye, see you later, closing statements  
 3. "knowledge_base" - Any questions or requests for information (school-related or otherwise)
+4. "knowledge_base_[school_number]" - Any questions or requests for information (school-related or otherwise) but the question contains the name of any of these schools: Orcutt Academy K-8(1), Orcutt Academy High School(2), Lakeview Junior High(3), Orcutt Junior High(4), Alice Shaw Elementary(5), Joe Nightingale Elementary(6), Olga Reed School K-8(7), Patterson Road Elementary(8), Pine Grove Elementary(9), Ralph Dunlap Elementary(10), Orcutt School for Independent Study(11)
 
 EXAMPLES:
 - "Hi there" → greeting
-- "Hello, how are you?" → greeting
-- "Good morning!" → greeting
 - "Thanks for your help" → farewell
 - "Goodbye" → farewell
-- "Thank you, that's all I needed" → farewell
 - "What are the school hours?" → knowledge_base
 - "How do I enroll my child?" → knowledge_base
-- "Tell me about the math program" → knowledge_base
-- "What's the weather like?" → knowledge_base
-- "Can you help me with homework?" → knowledge_base
-- "I need information about buses" → knowledge_base
+- "Tell me about the math program at lakeview" → knowledge_base_3
+- "I need information about buses at San Luis Obispo High School" → knowledge_base
+- "What is the address of Pine grove?" -> knowledge_base_9
 
 USER MESSAGE: "{user_input}"
 
-Respond with ONLY the category name (greeting, farewell, or knowledge_base). No explanation needed."""
+Respond with ONLY the category name (greeting, farewell, knowledge_base, knowledge_base_[school_number]). No explanation needed."""
 
             body = json.dumps({
                 "messages": [
@@ -441,10 +459,12 @@ Respond with ONLY the category name (greeting, farewell, or knowledge_base). No 
             
             response_body = json.loads(response['body'].read())
             classification = response_body['output']['message']['content'][0]['text'].strip().lower()
-            
+            logger.info(f"Classification: {classification}")
             # Validate the classification result
-            valid_categories = ['greeting', 'farewell', 'knowledge_base']
+            valid_categories = ['greeting', 'farewell']
             if classification in valid_categories:
+                return classification
+            elif "knowledge_base" in classification:
                 return classification
             else:
                 return 'knowledge_base'
@@ -534,12 +554,10 @@ Respond with ONLY the category name (greeting, farewell, or knowledge_base). No 
                                 source_url = "NA"
 
                             if 'domain' in result['metadata']:
-                                logger.info(f"domain_1: {result['metadata']['domain']}")
                                 domain = next((k for k, v in school_url_dict.items() if v == result['metadata']['domain']), None) #get name of school from the dictionary
                             else:
                                 domain = "NA"
                                 
-                            logger.info(f"domain: {domain}")
                             context += f"[Source {source_counter}]: Meeting Date: {meeting_date} source_url: {source_url} School Domain: {domain} \n {chunk_text}\n\n"
                             
                             # Extract source metadata
@@ -647,7 +665,7 @@ If information is insufficient, clearly state "I don't have specific information
 Suggest contacting Orcutt Schools directly when appropriate
 NEVER say "The provided context does not relate to your question"
 If the meeting_date for sources is given, use the source with the latest meeting_date but do not mention the meeting_date in your answer
-For questions like where can I find ... answer it using the source_url instead of giving a generalized answer
+For questions like where can I find ... answer it using the source_url instead of giving a generalized answer.
 If the user question is school specific then use the school domain specific sources to answer the question
 
 STEP-BY-STEP GUIDANCE:
@@ -665,7 +683,9 @@ Double-check contact information for accuracy
 Suggest related resources or next steps when appropriate
 Always prioritize accuracy, helpfulness, and user experience in your responses.
 Do not explain your reasoning of the response
+At the end of your response include a python list of the sources used, you will reference these using the counter values. Format it like <sources_used>[num1,num2,num3,...]</sources_used>. Only specify the sources that you ACTUALLY used to answer the question.
 """
+                logger.info(prompt)
 
                 body = {
                     "messages": [{"role": "user", "content": prompt}],
@@ -683,9 +703,12 @@ Do not explain your reasoning of the response
                 
                 response_body = json.loads(response['body'].read())
                 response_text = response_body['content'][0]['text']
-            
-            response_time = round(time.time() - start_time, 2)
-            return response_text, response_time
+                response_time = round(time.time() - start_time, 2)
+                logger.info(f"response: {response}")
+
+                # response_text = response["output"]["message"]["content"][1]["text"]
+                response_text, sources_used = parse_response(response_text)
+            return response_text, response_time, sources_used
                 
         except Exception as e:
             logging.error(f"Error generating response: {str(e)}")
