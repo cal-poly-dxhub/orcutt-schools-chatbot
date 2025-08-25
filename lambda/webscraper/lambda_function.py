@@ -11,7 +11,7 @@ from bs4 import BeautifulSoup
 import re
 import hashlib
 import time
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urljoin, urlparse, parse_qs
 from collections import deque
 from datetime import datetime
 import logging
@@ -32,6 +32,7 @@ class LambdaWebScraper:
         self.s3_bucket = s3_bucket
         self.max_workers = max_workers
         self.max_pages = max_pages
+        self.logger = logger
         
         # Initialize S3 client
         self.s3_client = boto3.client('s3')
@@ -57,6 +58,24 @@ class LambdaWebScraper:
             '.css', '.js', '.ico', '.png', '.jpg', '.jpeg', '.gif',
             '.woff', '.woff2', '.ttf', '.eot', '.map', '.json'
         }
+
+        # NEW: URL patterns to exclude (feeds, APIs, dynamic content)
+        self.excluded_url_patterns = [
+            r'pageID=smartSiteFeed',  # SmartSite RSS feeds
+            r'pageID=.*Feed',         # Other feed types
+            r'pageID=rss',           # RSS feeds
+            r'pageID=json',          # JSON endpoints
+            r'pageID=xml',           # XML endpoints
+            r'pageID=api',           # API endpoints
+            r'feed=.*%',             # URLs with encoded feed parameters
+            r'articleID=\d+',        # Direct article IDs (often dynamic)
+            r'ajax=.*',              # AJAX endpoints
+            r'callback=.*',          # JSONP callbacks
+            r'\.json\?',             # JSON endpoints with parameters
+            r'\.xml\?',              # XML endpoints with parameters
+            r'export=.*',            # Export functions
+            r'print=.*',             # Print versions
+        ]
         
         # Date patterns for agenda files (from original code)
         self.date_patterns = [
@@ -76,9 +95,37 @@ class LambdaWebScraper:
         })
         return session
     
+    def is_feed_or_dynamic_url(self, url):
+        """Check if URL is a feed or dynamic content endpoint that should be excluded."""
+        for pattern in self.excluded_url_patterns:
+            if re.search(pattern, url, re.IGNORECASE):
+                self.logger.debug(f"Excluding feed/dynamic URL: {url} (matched pattern: {pattern})")
+                return True
+        
+        # Additional check for complex query parameters that suggest dynamic content
+        parsed = urlparse(url)
+        if parsed.query:
+            query_params = parse_qs(parsed.query)
+            
+            # Check for encoded JSON or complex data structures
+            for param, values in query_params.items():
+                for value in values:
+                    if (len(value) > 100 or  # Very long parameter values
+                        '%22' in value or    # Encoded quotes suggest JSON
+                        '%7B' in value or    # Encoded { suggests JSON
+                        '%5B' in value or    # Encoded [ suggests arrays
+                        value.count('%') > 10):  # Heavily encoded content
+                        self.logger.debug(f"Excluding complex parameter URL: {url}")
+                        return True
+        
+        return False
+    
     def is_valid_url(self, url):
         """Check if URL is valid and belongs to the target domain (from original code)."""
         try:
+            if self.is_feed_or_dynamic_url(url):
+                return False
+            
             parsed = urlparse(url)
             
             # More comprehensive domain checking
