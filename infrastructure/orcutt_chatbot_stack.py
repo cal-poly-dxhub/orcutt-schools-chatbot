@@ -33,8 +33,7 @@ class OrcuttChatbotStack(Stack):
             self, "KnowledgeBaseBucket",
             bucket_name=self.config.get_s3_bucket_name('kb'),
             versioned=True,
-            removal_policy=RemovalPolicy.DESTROY,
-            auto_delete_objects=True
+            removal_policy=RemovalPolicy.DESTROY
         )
         source_bucket = s3.Bucket.from_bucket_name(self, "SourceBucket", self.config.get_s3_bucket_name('kb'))
 
@@ -205,7 +204,7 @@ class OrcuttChatbotStack(Stack):
         index_creator = lambda_.Function(
             self, "IndexCreator",
             runtime=lambda_.Runtime.PYTHON_3_9,
-            handler="index.handler",
+            handler="lambda_function.lambda_handler",
             role=index_creator_role,
             timeout=Duration.minutes(10),
             layers=[opensearch_layer],
@@ -213,166 +212,7 @@ class OrcuttChatbotStack(Stack):
                 "DOMAIN_NAME": self.config.get_opensearch_domain_name(),
                 "REGION": self.region
             },
-            code=lambda_.Code.from_inline("""
-import json
-import boto3
-from opensearchpy import OpenSearch, RequestsHttpConnection, AWSV4SignerAuth
-
-def create_opensearch_index(domain_endpoint=None, index_name="orcuttindex", region="us-west-2"):
-    # Use provided endpoint or get it automatically
-    index_name = "orcuttindex"
-    if not domain_endpoint:
-        print("ERROR: No domain endpoint provided")
-        return False
-    
-    print(f"Creating index '{index_name}' on domain '{domain_endpoint}'")
-    
-    try:
-        # Set up OpenSearch client with AWS auth
-        service = "es"  # For managed clusters, use "es" not "aoss"
-        credentials = boto3.Session().get_credentials()
-        awsauth = AWSV4SignerAuth(credentials, region, service)
-        
-        os_client = OpenSearch(
-            hosts=[{"host": domain_endpoint, "port": 443}],
-            http_auth=awsauth,
-            use_ssl=True,
-            verify_certs=True,
-            timeout=300,
-            connection_class=RequestsHttpConnection,
-        )
-        
-        # Simplified index mapping that should work
-        mapping = {
-            "settings": {
-                "index.knn": True
-            },
-            "mappings": {
-                "dynamic": True,
-                "properties": {
-                    "vector": {
-                        "type": "knn_vector",
-                        "dimension": 1024,
-                        "method": {
-                            "name": "hnsw",
-                            "space_type": "l2",
-                            "engine": "FAISS",
-                            "parameters": {}
-                        }
-                    },
-                    "text": {
-                        "type": "text",
-                        "fields": {"keyword": {"type": "keyword"}}
-                    },
-                    "metadata": {
-                        "type": "object",
-                        "enabled": False
-                    }
-                }
-            }
-        }
-        
-        # Check if index exists, create if not
-        if not os_client.indices.exists(index=index_name):
-            print(f"Index '{index_name}' does not exist. Creating...")
-            response = os_client.indices.create(index=index_name, body=mapping)
-            print(f"Create response: {response}")
-            
-            # Verify creation
-            if os_client.indices.exists(index=index_name):
-                print(f"Index '{index_name}' created successfully.")
-                return True
-            else:
-                print(f"Failed to create index '{index_name}'")
-                return False
-        else:
-            print(f"Index '{index_name}' already exists!")
-            
-            # Optionally, get index info
-            try:
-                index_info = os_client.indices.get(index=index_name)
-                print(f"Index mapping: {json.dumps(index_info[index_name]['mappings'], indent=2, default=str)}")
-            except Exception as e:
-                print(f"Could not get index info: {e}")
-            return True
-            
-    except Exception as e:
-        print(f"ERROR: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        return False
-
-def get_domain_endpoint(domain_name, region):
-    \"\"\"Helper function to get your OpenSearch domain endpoint\"\"\"
-    try:
-        opensearch_client = boto3.client('opensearch', region_name=region)
-        response = opensearch_client.describe_domain(DomainName=domain_name)
-        endpoint = response['DomainStatus']['Endpoint']
-        print(f"Found domain endpoint: {endpoint}")
-        return endpoint
-    except Exception as e:
-        print(f"Error getting domain endpoint: {e}")
-        return None
-
-def handler(event, context):
-    print("Starting OpenSearch Index Creation Lambda")
-    print(f"Event: {json.dumps(event, default=str)}")
-    
-    if event['RequestType'] == 'Delete':
-        print("Delete event - skipping index deletion for safety")
-        return {
-            'Status': 'SUCCESS', 
-            'PhysicalResourceId': 'vector-index',
-            'Data': {'Message': 'Index deletion skipped for safety'}
-        }
-    
-    try:
-        # Get parameters from CDK
-        domain_name = event['ResourceProperties']['DomainName']
-        region = event['ResourceProperties']['Region']
-        index_name = event['ResourceProperties']['IndexName']
-        
-        print(f"Starting OpenSearch Index Creation Script")
-        print(f"Domain: {domain_name}, Region: {region}, Index: {index_name}")
-        
-        # First, try to get the domain endpoint automatically
-        auto_endpoint = get_domain_endpoint(domain_name, region)
-        if auto_endpoint:
-            print(f"Using auto-detected endpoint: {auto_endpoint}")
-        
-        # Create the index (using dynamic parameters)
-        success = create_opensearch_index(
-            domain_endpoint=auto_endpoint,
-            index_name=index_name,
-            region=region
-        )
-        
-        if success:
-            print("Script completed successfully!")
-            return {
-                'Status': 'SUCCESS',
-                'PhysicalResourceId': f'vector-index-{index_name}',
-                'Data': {
-                    'IndexName': index_name,
-                    'Message': f'Index {index_name} created successfully'
-                }
-            }
-        else:
-            print("Script failed!")
-            return {
-                'Status': 'FAILED',
-                'Reason': 'Index creation failed'
-            }
-            
-    except Exception as e:
-        print(f"Lambda Error: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        return {
-            'Status': 'FAILED',
-            'Reason': f"Lambda failed: {str(e)}"
-        }
-""")
+            code=lambda_.Code.from_asset("scripts")
         )
 
         # Custom resource to create/check the vector index
@@ -493,133 +333,7 @@ def handler(event, context):
             )
         )
         
-        # Custom resource to trigger webscraper and sync
-        webscraper_trigger = lambda_.Function(
-            self, "WebscraperTrigger",
-            runtime=lambda_.Runtime.PYTHON_3_13,
-            handler="index.handler",
-            timeout=Duration.minutes(15),
-            code=lambda_.Code.from_inline("""
-import json
-import boto3
-import time
 
-def handler(event, context):
-    if event['RequestType'] == 'Delete':
-        return {'Status': 'SUCCESS', 'PhysicalResourceId': 'webscraper-trigger'}
-    
-    try:
-        lambda_client = boto3.client('lambda')
-        bedrock_agent = boto3.client('bedrock-agent')
-        
-        # Get parameters
-        webscraper_arn = event['ResourceProperties']['WebscraperArn']
-        kb_id = event['ResourceProperties']['KnowledgeBaseId']
-        data_source_id = event['ResourceProperties']['DataSourceId']
-        
-        # List of all school websites to scrape
-        websites = [
-            'https://orcuttschools.net',
-            'https://orcuttacademy.orcuttschools.net',
-            'https://oahs.orcuttschools.net',
-            'https://lakeview.orcuttschools.net',
-            'https://ojhs.orcuttschools.net',
-            'https://aliceshaw.orcuttschools.net',
-            'https://joenightingale.orcuttschools.net',
-            'https://olgareed.orcuttschools.net',
-            'https://pattersonroad.orcuttschools.net',
-            'https://pinegrove.orcuttschools.net',
-            'https://ralphdunlap.orcuttschools.net',
-            'https://osis.orcuttschools.net'
-        ]
-        
-        print(f"Scraping {len(websites)} school websites...")
-        
-        # Scrape each website sequentially
-        for i, base_url in enumerate(websites, 1):
-            print(f"Scraping {i}/{len(websites)}: {base_url}")
-            
-            response = lambda_client.invoke(
-                FunctionName=webscraper_arn,
-                InvocationType='RequestResponse',
-                Payload=json.dumps({
-                    'base_url': base_url,
-                    's3_bucket': event['ResourceProperties']['S3Bucket'],
-                    'max_workers': 20,
-                    'max_pages': 200
-                })
-            )
-            
-            # Check if webscraper succeeded
-            payload = json.loads(response['Payload'].read())
-            if payload.get('statusCode') != 200:
-                print(f"Warning: {base_url} failed: {payload}")
-                # Continue with other sites instead of failing completely
-            else:
-                print(f"Successfully scraped: {base_url}")
-        
-        print("All websites scraping completed")
-        
-        # Start knowledge base sync
-        print(f"Starting KB sync for: {kb_id}")
-        sync_response = bedrock_agent.start_ingestion_job(
-            knowledgeBaseId=kb_id,
-            dataSourceId=data_source_id
-        )
-        
-        print(f"Knowledge base sync started: {sync_response['ingestionJob']['ingestionJobId']}")
-        
-        return {
-            'Status': 'SUCCESS',
-            'PhysicalResourceId': 'webscraper-trigger',
-            'Data': {
-                'Message': 'Webscraper and KB sync completed',
-                'IngestionJobId': sync_response['ingestionJob']['ingestionJobId']
-            }
-        }
-        
-    except Exception as e:
-        print(f"Error: {str(e)}")
-        return {
-            'Status': 'FAILED',
-            'Reason': str(e)
-        }
-""")
-        )
-        
-        # Grant permissions to trigger Lambda
-        webscraper_trigger.add_to_role_policy(
-            iam.PolicyStatement(
-                actions=["lambda:InvokeFunction"],
-                resources=[webscraper_lambda.function_arn]
-            )
-        )
-        
-        webscraper_trigger.add_to_role_policy(
-            iam.PolicyStatement(
-                actions=["bedrock:StartIngestionJob", "bedrock:GetIngestionJob"],
-                resources=[f"arn:aws:bedrock:{self.region}:{self.account}:knowledge-base/*"]
-            )
-        )
-        
-        # Custom resource that triggers after everything is ready
-        webscraper_execution = CustomResource(
-            self, "WebscraperExecution",
-            service_token=cr.Provider(
-                self, "WebscraperExecutionProvider",
-                on_event_handler=webscraper_trigger
-            ).service_token,
-            properties={
-                "WebscraperArn": webscraper_lambda.function_arn,
-                "KnowledgeBaseId": kb.ref,
-                "DataSourceId": data_source.ref,
-                "S3Bucket": source_bucket.bucket_name
-            }
-        )
-        
-        # Ensure this runs after everything is created
-        webscraper_execution.node.add_dependency(data_source)
-        webscraper_execution.node.add_dependency(webscraper_lambda)
 
         # DynamoDB table for conversation history
         conversation_table = aws_dynamodb.Table(
@@ -693,8 +407,7 @@ def handler(event, context):
         # Frontend S3 bucket
         frontend_bucket = s3.Bucket(
             self, "FrontendBucket",
-            removal_policy=RemovalPolicy.DESTROY,
-            auto_delete_objects=True
+            removal_policy=RemovalPolicy.DESTROY
         )
 
         # CloudFront distribution
@@ -762,4 +475,16 @@ def handler(event, context):
             self, "DynamoDBTableName",
             value=conversation_table.table_name,
             description="DynamoDB table for conversations"
+        )
+
+        CfnOutput(
+            self, "KnowledgeBaseId",
+            value=kb.ref,
+            description="Bedrock Knowledge Base ID"
+        )
+
+        CfnOutput(
+            self, "DataSourceId",
+            value=data_source.ref,
+            description="Bedrock Data Source ID"
         )

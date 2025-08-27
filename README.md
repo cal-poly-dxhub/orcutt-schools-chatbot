@@ -8,6 +8,7 @@
 - [Architecture](#architecture)
 - [Support](#support)
 - [Deployment](#initial-setup)
+- [Webscraping](#webscraping)
 
 # Collaboration
 
@@ -54,21 +55,19 @@ The solution consists of several key components:
 1. Frontend Interface
 
     - React 18 application
-    - AWS Amplify hosting with global CDN
+    - S3 + Cloudfront Hosting
     - Tailwind CSS for responsive design
 
 2. API Layer
 
     - Amazon API Gateway for REST endpoints
     - AWS Lambda functions for serverless compute
-    - Cognito for Authentication and authorization middleware
 
 3. AI Services
 
-    - Amazon Bedrock with Claude 3.5 Sonnet for response generation
+    - Amazon Bedrock with Claude 3.5 Sonnet V2 for response generation
     - AWS Knowledge Bases for semantic document search
     - Nova Lite for query classification and intent recognition
-    - Bedrock Guardrails for content safety and filtering
 
 4. Data Storage and Management
 
@@ -98,7 +97,7 @@ Additionally other AWS services are used for additional functionality
 2. **Download and Start Docker Desktop**
    - Verify Docker is running:
     ```bash
-    bashdocker --version
+    docker --version
     ```
     
 ## Deployment Steps
@@ -115,7 +114,7 @@ Additionally other AWS services are used for additional functionality
 3. Start Docker Desktop
   - Verify Docker is running:
   ```bash
-  bashdocker --version
+  docker --version
   ```
 
 4. Configure AWS credentials
@@ -135,10 +134,22 @@ Additionally other AWS services are used for additional functionality
   ./scripts/deploy.sh
   ```
 
-### Post-Deployment Manual Steps
-After deployment is complete, perform this manual task:
+## Webscraping
+To run the webscraping functionality:
 
-  - Run sync in Knowledge Base
+  ```bash
+  ./run_webscraper.sh
+  ```
+
+This script executes the webscraping lambda function, which performs the following operations:
+
+1. Web Scraping: Scrapes content from all configured websites
+2. Metadata Generation: Creates metadata files for the scraped content
+3. Data Processing: Adds metadata to the scraped content
+4. S3 Upload: Uploads the processed content and metadata to the S3 bucket
+5. Knowledge Base Sync: Synchronizes the knowledge base with the newly added content
+
+The entire pipeline runs automatically once the script is executed, ensuring your knowledge base stays up-to-date with the latest web content.
 
 
 ## Support
