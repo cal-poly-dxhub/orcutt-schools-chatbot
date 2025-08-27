@@ -3,18 +3,18 @@ aws:
   account: ${CDK_DEFAULT_ACCOUNT}
 
 stack:
-  name: OrcuttChatbotStack4
+  name: OrcuttChatbotStack
 
 s3:
-  knowledge_base_bucket: orcutt-chatbot-kb5
-  frontend_bucket: orcutt-chatbot-frontend5
+  knowledge_base_bucket: orcutt-chatbot-kb
+  frontend_bucket: orcutt-chatbot-frontend
 
 dynamodb:
-  table_name: orcutt-conversations5
+  table_name: orcutt-conversations
 
 bedrock:
   knowledge_base_id: ${KNOWLEDGE_BASE_ID}
-  knowledge_base_name: OrcuttSchoolsKB5
+  knowledge_base_name: OrcuttSchoolsKB
   embedding_model: amazon.titan-embed-text-v2:0
   chunking:
     strategy: SEMANTIC
@@ -23,13 +23,13 @@ bedrock:
     breakpoint_percentile_threshold: 95
 
 opensearch:
-  domain_name: orcutt5
+  domain_name: orcutt
   version: "2.19"
   instance_type: t3.small.search
   instance_count: 1
   volume_size: 10
   volume_type: gp3
-  index_name: orcuttindex5
+  index_name: orcuttindex
   vector_field: embeddings
   text_field: AMAZON_BEDROCK_TEXT_CHUNK
   metadata_field: AMAZON_BEDROCK_METADATA
@@ -49,7 +49,7 @@ lambda:
     memory: 1024
 
 api:
-  name: OrcuttChatbotAPI5
+  name: OrcuttChatbotAPI
   cors:
     allow_origins: ["*"]
     allow_methods: ["GET", "POST", "OPTIONS"]
