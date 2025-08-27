@@ -32,7 +32,7 @@ def get_stack_outputs(stack_name: str) -> dict:
         return {}
 
 def create_env_file(outputs: dict, filename: str = '.env'):
-    """Create environment file with the required variables."""
+    """Create or update environment file with the required variables."""
     required_outputs = {
         'WEBSCRAPER_LAMBDA_ARN': 'WebScraperLambdaArn',
         'S3_BUCKET_NAME': 'S3BucketName', 
@@ -40,16 +40,27 @@ def create_env_file(outputs: dict, filename: str = '.env'):
         'DATA_SOURCE_ID': 'DataSourceId'
     }
     
+    # Read existing .env file if it exists
+    existing_vars = {}
+    if os.path.exists(filename):
+        with open(filename, 'r') as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith('#') and '=' in line:
+                    key, value = line.split('=', 1)
+                    existing_vars[key] = value
+    
     env_content = []
     missing_outputs = []
     
+    # Update with new values from CDK outputs
     for env_var, output_key in required_outputs.items():
         if output_key in outputs:
             value = outputs[output_key]
             # Fix Data Source ID format (extract second part after |)
             if env_var == 'DATA_SOURCE_ID' and '|' in value:
                 value = value.split('|')[1]
-            env_content.append(f"{env_var}={value}")
+            existing_vars[env_var] = value
         else:
             missing_outputs.append(output_key)
     
@@ -57,12 +68,15 @@ def create_env_file(outputs: dict, filename: str = '.env'):
         print(f"Missing required outputs: {', '.join(missing_outputs)}")
         return False
     
-    # Write to .env file
+    # Write all variables back to .env file
+    for key, value in existing_vars.items():
+        env_content.append(f"{key}={value}")
+    
     with open(filename, 'w') as f:
         f.write('\n'.join(env_content))
         f.write('\n')
     
-    print(f"Environment file created: {filename}")
+    print(f"Environment file updated: {filename}")
     return True
 
 def create_shell_script(outputs: dict, filename: str = 'run_webscraper.sh'):

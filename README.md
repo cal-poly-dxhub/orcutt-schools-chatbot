@@ -138,7 +138,7 @@ Additionally other AWS services are used for additional functionality
 To run the webscraping functionality:
 
   ```bash
-  ./run_webscraper.sh
+  ./scripts/run_webscraper.sh
   ```
 
 This script executes the webscraping lambda function, which performs the following operations:

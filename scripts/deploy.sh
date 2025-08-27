@@ -4,6 +4,9 @@
 
 set -e
 
+# Change to project root directory
+cd "$(dirname "$0")/.."
+
 # Activate virtual environment if it exists
 if [ -d "venv" ]; then
     echo "Activating virtual environment..."
@@ -23,8 +26,8 @@ ENVIRONMENT=${ENVIRONMENT:-dev}
 AWS_REGION=${AWS_REGION:-$(aws configure get region)}
 AWS_ACCOUNT=${AWS_ACCOUNT:-$(aws sts get-caller-identity --query Account --output text)}
 
-# Set stack name based on environment
-STACK_NAME="OrcuttChatbotStack-${ENVIRONMENT}"
+# Set stack name - use environment variable or get from config
+STACK_NAME=${STACK_NAME:-$(python3 scripts/get_stack_name.py)}
 
 echo "Deploying Orcutt Chatbot to $ENVIRONMENT environment..."
 echo "AWS Account: $AWS_ACCOUNT"

@@ -4,6 +4,9 @@
 
 set -e
 
+# Change to project root directory
+cd "$(dirname "$0")/.."
+
 echo "Setting up Orcutt Chatbot..."
 
 # Check prerequisites
