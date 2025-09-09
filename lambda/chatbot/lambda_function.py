@@ -231,9 +231,9 @@ class OrcuttChatbot:
                     if selected_school != "None":
                         # Add selected school to the query
                         message = message + " " + selected_school
-                        kb_response_school_specific = self.query_knowledge_base_semantic(message, knowledge_base_id, school_url_dict[selected_school.strip()])
+                        kb_response_school_specific = self.query_knowledge_base_semantic(message, knowledge_base_id, school_url_dict[selected_school.strip()], 10)
 
-                    kb_response_main_domain = self.query_knowledge_base_semantic(message, knowledge_base_id, "orcuttschools.net")
+                    kb_response_main_domain = self.query_knowledge_base_semantic(message, knowledge_base_id, "orcuttschools.net", 20)
                     context, sources = self.process_knowledge_base_response([kb_response_main_domain, kb_response_school_specific])
             
             # Step 5: Generate response with conversation context
@@ -504,7 +504,7 @@ Respond with ONLY the category name (greeting, farewell, knowledge_base, knowled
             logging.error(f"Error applying Bedrock Guardrails: {str(e)}")
             return True
     
-    def query_knowledge_base_semantic(self, query: str, knowledge_base_id: str, metadata_filter: str) -> Dict:
+    def query_knowledge_base_semantic(self, query: str, knowledge_base_id: str, metadata_filter: str, number_of_results: int) -> Dict:
         """Query Knowledge Base using only semantic search with z-score filtering"""
         logger.info(f"metadata_filter: {metadata_filter}")
         try:
@@ -514,7 +514,7 @@ Respond with ONLY the category name (greeting, farewell, knowledge_base, knowled
                 retrievalQuery={'text': query},
                 retrievalConfiguration={
                     'vectorSearchConfiguration': {
-                        'numberOfResults': 10,
+                        'numberOfResults': number_of_results,
                         'overrideSearchType': 'SEMANTIC',
                         'filter': {
                             'equals': {
