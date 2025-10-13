@@ -425,9 +425,11 @@ CATEGORIES:
 2. "farewell" - Thank you messages, goodbye, see you later, closing statements  
 3. "knowledge_base" - Any questions or requests for information (school-related or otherwise)
 4. "knowledge_base_[school_number]" - Any questions or requests for information (school-related or otherwise) but the question contains the name of any of these schools: Orcutt Academy K-8(1), Orcutt Academy High School(2), Lakeview Junior High(3), Orcutt Junior High(4), Alice Shaw Elementary(5), Joe Nightingale Elementary(6), Olga Reed School K-8(7), Patterson Road Elementary(8), Pine Grove Elementary(9), Ralph Dunlap Elementary(10), Orcutt School for Independent Study(11)
+- If just Orcutt School is mentioned in the question then reply with knowledge_base
 
 EXAMPLES:
 - "Hi there" → greeting
+- "hello! where is lakeview school?" -> knowledge_base_3
 - "Thanks for your help" → farewell
 - "Goodbye" → farewell
 - "What are the school hours?" → knowledge_base
@@ -435,6 +437,9 @@ EXAMPLES:
 - "Tell me about the math program at lakeview" → knowledge_base_3
 - "I need information about buses at San Luis Obispo High School" → knowledge_base
 - "What is the address of Pine grove?" -> knowledge_base_9
+- "3rd grade enrollment process Orcutt Schools" -> knowledge_base (because Orcutt Schools is the main district school)
+- "tell me about ASES" → knowledge_base (ASES is a general program acronym, not school-specific)
+- "What is ASES at Alice Shaw Elementary?" → knowledge_base_5 (as the school name(Alice Shaw) is mentioned in the question)
 
 USER MESSAGE: "{user_input}"
 
