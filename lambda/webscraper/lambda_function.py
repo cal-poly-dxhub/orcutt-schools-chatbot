@@ -2,6 +2,7 @@
 """
 Lambda Web Scraper for Orcutt Schools
 Scrapes website content and saves to S3 for knowledge base ingestion
+UPDATED: Excludes board agenda and minutes files from specific board trustee pages.
 """
 
 import json
@@ -41,11 +42,13 @@ class LambdaWebScraper:
         self.visited_urls = set()
         self.downloaded_files = set()
         self.agenda_files = []  # Track agenda files for date extraction
+        self.excluded_files = []  # Track excluded board files
         
         # Thread-safe locks
         self.visited_lock = threading.Lock()
         self.downloaded_lock = threading.Lock()
         self.agenda_lock = threading.Lock()
+        self.excluded_lock = threading.Lock()
         
         # File extensions to download (from original code)
         self.downloadable_extensions = {
@@ -59,7 +62,7 @@ class LambdaWebScraper:
             '.woff', '.woff2', '.ttf', '.eot', '.map', '.json'
         }
 
-        # NEW: URL patterns to exclude (feeds, APIs, dynamic content)
+        # URL patterns to exclude (feeds, APIs, dynamic content)
         self.excluded_url_patterns = [
             r'pageID=smartSiteFeed',  # SmartSite RSS feeds
             r'pageID=.*Feed',         # Other feed types
@@ -76,6 +79,12 @@ class LambdaWebScraper:
             r'export=.*',            # Export functions
             r'print=.*',             # Print versions
         ]
+        
+        # NEW: Board trustee pages where we should exclude agenda/minutes files
+        self.board_trustee_pages = {
+            'https://www.orcuttschools.net/boardoftrustees',
+            'https://www.orcuttschools.net/44037_3'
+        }
         
         # Date patterns for agenda files (from original code)
         self.date_patterns = [
@@ -95,11 +104,81 @@ class LambdaWebScraper:
         })
         return session
     
+    def is_board_file_from_trustee_page(self, file_url, source_page_url):
+        """Check if a file is a board agenda/minutes file from a board trustee page."""
+        
+        # More flexible URL matching - check if URL contains trustee page identifiers
+        trustee_page_patterns = [
+            'boardoftrustees',
+            '44037_3',
+            '33968_3',
+            '34741_3',
+            '33966_3',
+            '34736_3',
+            '47216_2'
+        ]
+        
+        is_trustee_page = any(pattern in source_page_url.lower() for pattern in trustee_page_patterns)
+        
+        if not is_trustee_page:
+            return False
+        
+        # Extract just the filename from the URL
+        parsed_url = urlparse(file_url)
+        filename = parsed_url.path.split('/')[-1].lower()
+        
+        # If no filename extracted, skip
+        if not filename or not filename.endswith('.pdf'):
+            return False
+        
+        # Enhanced patterns to catch board files
+        board_patterns = [
+            r'.*agenda.*\.pdf$',
+            r'.*minutes.*\.pdf$',
+            r'.*meeting.*\.pdf$',
+            r'.*board.*\.pdf$',
+            r'.*special.*\.pdf$',
+            r'.*regular.*\.pdf$',
+            r'.*public.*\.pdf$',
+            r'.*charter.*\.pdf$'
+        ]
+        
+        # Check patterns
+        for pattern in board_patterns:
+            if re.search(pattern, filename, re.IGNORECASE):
+                logger.info(f"Excluding board file: {filename} (pattern: {pattern})")
+                with self.excluded_lock:
+                    self.excluded_files.append({
+                        'file_url': file_url,
+                        'filename': filename,
+                        'source_page': source_page_url,
+                        'matched_pattern': pattern
+                    })
+                return True
+        
+        # Check keywords
+        keywords = ['specialboard', 'publicagenda', 'boardagenda', 'boardminutes',
+                    'meeting-materials', 'board-minutes', 'board-meeting', 'charter']
+        
+        for keyword in keywords:
+            if keyword in filename:
+                logger.info(f"Excluding board file: {filename} (keyword: {keyword})")
+                with self.excluded_lock:
+                    self.excluded_files.append({
+                        'file_url': file_url,
+                        'filename': filename,
+                        'source_page': source_page_url,
+                        'matched_pattern': f'keyword_{keyword}'
+                    })
+                return True
+        
+        return False
+    
     def is_feed_or_dynamic_url(self, url):
         """Check if URL is a feed or dynamic content endpoint that should be excluded."""
         for pattern in self.excluded_url_patterns:
             if re.search(pattern, url, re.IGNORECASE):
-                self.logger.debug(f"Excluding feed/dynamic URL: {url} (matched pattern: {pattern})")
+                logger.debug(f"Excluding feed/dynamic URL: {url} (matched pattern: {pattern})")
                 return True
         
         # Additional check for complex query parameters that suggest dynamic content
@@ -115,7 +194,7 @@ class LambdaWebScraper:
                         '%7B' in value or    # Encoded { suggests JSON
                         '%5B' in value or    # Encoded [ suggests arrays
                         value.count('%') > 10):  # Heavily encoded content
-                        self.logger.debug(f"Excluding complex parameter URL: {url}")
+                        logger.debug(f"Excluding complex parameter URL: {url}")
                         return True
         
         return False
@@ -292,10 +371,10 @@ class LambdaWebScraper:
         return text
     
     def extract_date_from_file_content(self, file_content, filename):
-        """Extract meeting date from file content using PyPDF2."""
+        """Extract meeting date from file content using pypdf."""
         try:
             if filename.lower().endswith('.pdf'):
-                # Extract from PDF content using PyPDF2
+                # Extract from PDF content using pypdf
                 try:
                     pdf_file = io.BytesIO(file_content)
                     reader = PdfReader(pdf_file)
@@ -367,6 +446,11 @@ class LambdaWebScraper:
     def download_file(self, url, source_url):
         """Download a file and save to S3 with metadata (from original code)."""
         try:
+            # NEW: Check if this is a board file from a trustee page and should be excluded
+            if self.is_board_file_from_trustee_page(url, source_url):
+                logger.info(f"Skipping board agenda/minutes file from trustee page: {url}")
+                return True  # Return True to indicate "successful" handling (i.e., intentionally skipped)
+            
             session = self.create_session()
             logger.info(f"Downloading file: {url}")
             response = session.get(url, timeout=30)
@@ -426,7 +510,7 @@ class LambdaWebScraper:
                 metadata_filename = f"{s3_filename}.metadata.json"
                 self.upload_to_s3(metadata_json, metadata_filename, 'application/json')
                 
-                # Track agenda files for date extraction
+                # Track agenda files for date extraction (only if not excluded)
                 if 'agenda' in filename.lower():
                     with self.agenda_lock:
                         self.agenda_files.append((s3_filename, url, response.content))
@@ -851,6 +935,7 @@ class LambdaWebScraper:
         self.process_agenda_dates()
         
         logger.info(f"Crawling completed. Visited {len(self.visited_urls)} pages, downloaded {len(self.downloaded_files)} files.")
+        logger.info(f"Excluded {len(self.excluded_files)} board files from trustee pages.")
         logger.info(f"Final statistics: {total_links_found} total links discovered across all pages.")
 
 def lambda_handler(event, context):
@@ -880,10 +965,12 @@ def lambda_handler(event, context):
                 'base_url': base_url,
                 'pages_crawled': len(scraper.visited_urls),
                 'files_downloaded': len(scraper.downloaded_files),
+                'board_files_excluded': len(scraper.excluded_files),
                 's3_bucket': s3_bucket,
                 'agenda_files_processed': len(scraper.agenda_files),
                 'files_saved_to_bucket_root': True,
-                'meeting_dates_extracted': True
+                'meeting_dates_extracted': True,
+                'board_file_exclusion_enabled': True
             })
         }
         
